@@ -1,2 +1,2 @@
-import pandas, numpy, skilearn
+import pandas, numpy
 
