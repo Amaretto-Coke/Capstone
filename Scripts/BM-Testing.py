@@ -1,3 +1,3 @@
 import pandas, numpy
 
-import math, seaborn, numpy
+import math, seaborn
