@@ -1,4 +1,6 @@
-import shutil, os, subprocess
+import shutil
+import os
+import subprocess
 from time import strftime
 from pathlib import Path
 import pandas as pd
@@ -9,14 +11,14 @@ def build_exe_version(script='', description=''):
     if script == '':
         print('There was no script to build.')
         quit()
-    version = MakeVersion(script=script, description=description)
+    version = make_version(script=script, description=description)
 
     generate_version_info(ver=version,
                           original_filename=script,
                           file_description=description)
 
-    BuildExe(script, noconsole=False)
-    exe_file = MoveBuild(script)
+    build_exe(script, noconsole=False)
+    exe_file = move_build(script)
 
     return exe_file
 
@@ -80,6 +82,9 @@ def make_version(script, description, new_rendition=False, new_release=False, ne
               'Version': 'float',
               'Description': 'str'}
     hist = pd.read_csv(r'BuildHistory.csv', index_col=0, dtype=dtypes)
+    print(hist)
+    print('\n')
+
     whist = hist[hist.Script == script]
     ver_list = ['', '', '', '']
     try:
@@ -148,7 +153,12 @@ def build_exe(py_script, onefile=True, noconsole=True, icon=True, version=True):
     if version:
         command += ' --version-file=' + os.getcwd() + r'\version.txt'
     command += ' --clean'
-    subprocess.call(command)
+    try:
+        subprocess.call(command)
+    except FileNotFoundError:
+        print('Could not run pyinstaller from the command prompt.')
+        quit()
+
 
 def move_build(script=''):
     if script == '':
