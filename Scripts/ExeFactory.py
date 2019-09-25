@@ -2,7 +2,6 @@ import shutil
 import os
 import subprocess
 from time import strftime
-from pathlib import Path
 import pandas as pd
 
 
@@ -171,12 +170,11 @@ def move_build(script=''):
 
     if not os.path.exists(builds_folder):
         os.makedirs(builds_folder)
-
     os.makedirs(target_folder)
 
-    BuildOutputs = [r'\\build\\', r'\\dist', r'\\' + script + '.spec']
+    build_outputs = [r'\\build\\', r'\\dist', r'\\' + script + '.spec']
 
-    for Output in BuildOutputs:
+    for Output in build_outputs:
         shutil.move(src=os.getcwd() + Output, dst=target_folder + Output)
 
     for file in os.listdir(target_folder + r'build\\' + script):
@@ -192,10 +190,3 @@ def move_build(script=''):
     shutil.rmtree(target_folder + r'dist\\')
 
     return target_folder + r'\\' + script + '.exe'
-
-
-
-
-# print(os.path.dirname(exe))
-# subprocess.call('explorer ' + os.path.dirname(exe), shell=True)
-
