@@ -135,7 +135,7 @@ def make_version(script, description, new_rendition=False, new_release=False, ne
     try:
         hist.to_csv(r'BuildHistory.csv')
     except PermissionError:
-        print('History file not accessable, could not update Build History.')
+        print('History file not accessible, could not update Build History.')
         quit()
     return ver_list
 
