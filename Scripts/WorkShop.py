@@ -1,13 +1,13 @@
 from Scripts.ExeFactory import *
+from pathlib import Path
 
-description = 'Testing Build'# input('Build description for ' + Script + ':\n')
+description = 'Testing Build'
 
 Scripts = [Path(f).stem for f in os.listdir(os.getcwd())]
 scriptDict = {Scripts.index(s) : s for s in Scripts}
-print("{:<8} {:<15}".format('Index','Script'))
+print("{:<8} {:<15}".format('Index', 'Script'))
 for k, v in scriptDict.items():
-    print("{:<8} {:<10}".format(k,v))
-
+    print("{:<8} {:<10}".format(k, v))
 
 ans = ''
 inIndex = True

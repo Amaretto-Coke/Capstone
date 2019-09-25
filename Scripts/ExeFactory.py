@@ -15,7 +15,6 @@ def build_exe_version(script='', description=''):
     generate_version_info(ver=version,
                           original_filename=script,
                           file_description=description)
-
     build_exe(script, noconsole=False)
     exe_file = move_build(script)
 
