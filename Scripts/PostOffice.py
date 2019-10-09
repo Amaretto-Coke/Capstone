@@ -28,7 +28,7 @@ def import_cases_and_fluids():
     return cases
 
 
-def export_results(dfs=one):
+def export_results(dfs=None):
     # Creating a path string to the user interface excel file
     path = os.path.dirname(os.getcwd()) + r'\MailBox.xlsm'
 
@@ -39,5 +39,5 @@ def export_results(dfs=one):
         df.to_excel(writer, sheet_name=df.name)
         
         
-        
-
+def validate_excel_sheet_name(val_string):
+    not_allowed = ['/', '*', '?', ':', '[', ']', '\\']
