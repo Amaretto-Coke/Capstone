@@ -39,7 +39,6 @@ def export_results(dfs=None):
         path = os.path.dirname(os.getcwd()) + r'\MailBox.xlsx'
         for df in dfs:
             print('df:', df)
-            i =
             x = get_df_name(df)
             print('x:', x)
             y = validate_excel_sheet_name(x)
