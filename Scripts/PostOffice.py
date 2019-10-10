@@ -31,20 +31,29 @@ def import_cases_and_fluids():
     return cases
 
 
-def export_results(dfs=None):
+def export_results(dfs=None, df_names=None):
     if dfs is None:
         print('No date frames to export.')
     else:
         # Creating a path string to the user interface excel file
         path = os.path.dirname(os.getcwd()) + r'\MailBox.xlsx'
-        for df in dfs:
-            print('df:', df)
+        print(len(dfs))
+        for df, name in dfs, df_names:
+            print(df)
+            print(name)
+            print('hi')
+            print('\n')
+            quit()
             x = get_df_name(df)
             print('x:', x)
             y = validate_excel_sheet_name(x)
             print('y:', y)
-            sheet_name = validate_excel_sheet_name(get_df_name(df))
-            writer = append_df_to_excel(filename=path, sheet_name=sheet_name, df=df, index=False)
+            sheet_name = validate_excel_sheet_name(get_df_name(dfs))
+            print('sheet_name:', sheet_name)
+            writer = append_df_to_excel(filename=path,
+                                        sheet_name=sheet_name,
+                                        df=df,
+                                        index=False)
         writer.save()
         writer.close()
 

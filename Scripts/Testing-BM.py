@@ -14,7 +14,7 @@ df2 = pd.DataFrame(data=data)
 
 dfs = [df1, df2]
 
-export_results(dfs)
+export_results(dfs, ['df1', 'df2'])
 
 path = os.path.dirname(os.getcwd()) + r'\MailBox.xlsx'
 
