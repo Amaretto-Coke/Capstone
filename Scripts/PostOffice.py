@@ -37,10 +37,8 @@ def export_results(dfs=None, df_names=None):
     else:
         # Creating a path string to the user interface excel file
         path = os.path.dirname(os.getcwd()) + r'\MailBox.xlsx'
-        print(df_names[1])
         for i in range(0, len(dfs)):
             sheet_name = validate_excel_sheet_name(df_names[i])
-            print('sheet_name:', sheet_name)
             writer = append_df_to_excel(filename=path,
                                         sheet_name=sheet_name,
                                         df=dfs[i],
