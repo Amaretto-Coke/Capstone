@@ -37,25 +37,16 @@ def export_results(dfs=None, df_names=None):
     else:
         # Creating a path string to the user interface excel file
         path = os.path.dirname(os.getcwd()) + r'\MailBox.xlsx'
-        print(len(dfs))
-        for df, name in dfs, df_names:
-            print(df)
-            print(name)
-            print('hi')
-            print('\n')
-            quit()
-            x = get_df_name(df)
-            print('x:', x)
-            y = validate_excel_sheet_name(x)
-            print('y:', y)
-            sheet_name = validate_excel_sheet_name(get_df_name(dfs))
+        print(df_names[1])
+        for i in range(0, len(dfs)):
+            sheet_name = validate_excel_sheet_name(df_names[i])
             print('sheet_name:', sheet_name)
             writer = append_df_to_excel(filename=path,
                                         sheet_name=sheet_name,
-                                        df=df,
+                                        df=dfs[i],
                                         index=False)
-        writer.save()
-        writer.close()
+            writer.save()
+            writer.close()
 
 
 def append_df_to_excel(filename, df,
@@ -143,7 +134,6 @@ def validate_excel_sheet_name(val_string):
         print('Excel sheet name characters must be alphanumeric or "-", "_", or a ".".')
         print('All not allowed character converted to "-".')
         for c in val_string:
-            print(c)
             if c not in allowed:
                 val_string = val_string.replace(c, '-')
         return val_string
