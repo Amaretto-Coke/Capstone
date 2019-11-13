@@ -2,6 +2,8 @@
   <dictionary name="Brand">
     <words>
       <w>dataframe</w>
+      <w>dateframe</w>
+      <w>discretization</w>
       <w>levs</w>
     </words>
   </dictionary>
