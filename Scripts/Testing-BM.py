@@ -1,17 +1,17 @@
 import pandas as pd
 import math
 import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import pickle
 # import scipy as sp
 # import os
 # from PostOffice import *
 # from scipy.integrate import quad
-# import matplotlib.pyplot as plt
 # from sklearn import preprocessing
 
 
-pd.set_option('display.max_rows', 500)
-pd.set_option('display.max_columns', 500)
-pd.set_option('display.width', 1000)
+
 
 
 ''' 
@@ -153,7 +153,7 @@ def vf_plane_to_plane(s, l, t):
     return 2 * (a + b + c - d) / (math.pi * x * y)
 
 
-def is_plane(p1, p2, p3, p4):
+def points_all_on_plane(p1, p2, p3, p4):
     """
     Evaluates 4 coordinates to determine if they are on the
         same plane in 3D space.
@@ -194,7 +194,65 @@ def normalize_vector(vector):
     return vector/vector_mag
 
 
+def create_cyl_nodes(slices=1,
+                     rings=1,
+                     layers=1,
+                     outer_diameter=1,
+                     max_height=1,
+                     base_center=None,
+                     space_out=False):
+
+    if base_center is None:
+        base_center = [0, 0, 0]
+
+    delta_theta = 2 * math.pi / slices
+    delta_radii = 1/2/rings
+    delta_height = max_height/layers
+
+    lev_nodes = []
+    radii = delta_radii / 2
+    vol_limit = ((radii+delta_radii/2)**2 - (radii-delta_radii/2)**2) * delta_theta / 2 * 3
+
+    while radii < 1:
+        if ((radii+delta_radii/2)**2 - (radii-delta_radii/2)**2) * delta_theta/2 > vol_limit and space_out:
+            delta_theta /= 2
+
+        theta = delta_theta/2
+        while theta < 2 * math.pi:
+            lev_nodes.append([theta, radii*outer_diameter/2])
+            theta += delta_theta
+        radii += delta_radii
+
+    cyl_nodes = []
+
+    height = delta_height / 2
+    while height < max_height:
+        for lev in range(0, len(lev_nodes)):
+            cyl_nodes.append(lev_nodes[lev] + [height])
+        height += delta_height
+
+    xyz_nodes = []
+
+    for node in cyl_nodes:
+        x = base_center[0] + node[1] * math.cos(node[0])
+        y = base_center[1] + node[1] * math.sin(node[0])
+        z = base_center[2] + node[2]
+        xyz_nodes.append([x, y, z])
+
+    result = {'xyz': np.asarray(xyz_nodes),
+              'cyl': np.asarray(cyl_nodes),
+              'delta_theta': delta_theta,
+              'delta_radii': delta_radii,
+              'delta_height': delta_height}
+
+    return result
+
+pd.set_option('display.max_rows', 500)
+pd.set_option('display.max_columns', 500)
+pd.set_option('display.width', 1000)
+
 if __name__ == '__main__':
+    """
     '''
         ax = plt.gca()
         ax.pie([45, 45, 45, 45, 45, 45, 45, 45], radius=5, wedgeprops={'fc': 'none', 'edgecolor': 'k'})
@@ -276,6 +334,7 @@ if __name__ == '__main__':
     print(ans)
     '''  # Comparison of View Factor Formulas
 
+    '''
     p1 = np.array([1, 2, 3])
     p2 = np.array([4, 6, 9])
     p3 = np.array([12, 11, 9])
@@ -294,7 +353,47 @@ if __name__ == '__main__':
 
     #  print('The equation is {0}x + {1}y + {2}z = {3}'.format(a, b, c, d))
 
-    ans = is_plane(p1=p1, p2=p2, p3=p3, p4=p4)
+    ans = points_all_on_plane(p1=p1, p2=p2, p3=p3, p4=p4)
 
     print(ans)
+    '''  # Testing for vector normalization function and is_plane function.
+    """  # Older Testing
+
+    ans = create_cyl_nodes(rings=19,
+                           slices=2,
+                           layers=1,
+                           outer_diameter=20,
+                           max_height=3,
+                           base_center=[3, 3, 0],
+                           space_out=True)
+
+    # df = pd.DataFrame(data=ans['cyl'], columns=['theta', 'radii', 'height'])
+
+    '''
+    df['left_nbr'] = 0
+    df['right_nbr'] = 0
+    df['inside_nbrs'] = 0
+    df['outside_nbrs'] = 0
+    df['lower_nbrs'] = 0
+    df['upper_nbr'] = 0
+    '''
+
+    # df['area'] = ((df['radii']+ans['delta_radii']/2)**2 - (df['radii']-ans['delta_radii']/2)**2) * ans['delta_theta']/2
+
+    # print(df.head(600))
+    # quit()
+
+    fig = plt.figure()
+    ax = Axes3D(fig)
+    ax.scatter3D(ans['xyz'].T[0], ans['xyz'].T[1], ans['xyz'].T[2])
+    # ax.set_xlim(left=0, right=6)
+    # ax.set_ylim(bottom=0, top=6)
+    # ax.set_zlim(bottom=0, top=4)
+    ax.set_xlabel('X Axis')
+    ax.set_ylabel('Y Axis')
+    ax.set_zlabel('Z Axis')
+    plt.show()
+
+
+
 
