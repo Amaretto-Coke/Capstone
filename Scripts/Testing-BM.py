@@ -444,3 +444,4 @@ if __name__ == '__main__':
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(ans.x.to_list(), ans.y.to_list(), ans.z.to_list(), c='r')
     plt.show()
+
