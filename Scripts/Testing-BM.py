@@ -6,7 +6,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import pickle
 # import scipy as sp
 # import os
-# from PostOffice import *
+from PostOffice import *
 # from scipy.integrate import quad
 # from sklearn import preprocessing
 
@@ -39,10 +39,10 @@ def get_df_value(df_to_search, idx0, idx1, idx2, column):
         an index of 6 when the dataframe only contains 4 rows will
         produce the second entry.
 
-    :param df:      The dateframe that the value is to be retrieved from.
-    :param idx0:    The first index, appearing at the top level.
-    :param idx1:    The second index, found within the first index.
-    :param idx2:    The third index, found within the second index
+    :param df_to_search: The dateframe that the value is to be retrieved from.
+    :param idx0: The first index, appearing at the top level.
+    :param idx1: The second index, found within the first index.
+    :param idx2: The third index, found within the second index
     :param column:  The column from the indexed row that contains
                         the value to be retrieved.
     :return:    The return will be whatever value is stored in the dataframe
@@ -174,11 +174,9 @@ def points_all_on_plane(p1, p2, p3, p4):
     cp1 = normalize_vector(cp1)
     cp2 = normalize_vector(cp2)
 
-    points_all_on_plane = (cp1[0] == cp2[0]) and \
-                          (cp1[1] == cp2[1]) and \
-                          (cp1[2] == cp2[2])
+    result = (cp1[0] == cp2[0]) and (cp1[1] == cp2[1]) and (cp1[2] == cp2[2])
 
-    return points_all_on_plane
+    return result
 
 
 def normalize_vector(vector):
@@ -211,45 +209,116 @@ def create_cyl_nodes(slices=1,
 
     lev_nodes = []
     radii = delta_radii / 2
-    vol_limit = ((radii+delta_radii/2)**2 - (radii-delta_radii/2)**2) * delta_theta / 2 * 3
+    vol_limit = ((radii+delta_radii/2)**2 - (radii-delta_radii/2)**2) * delta_theta / 2 * 1.5
 
     while radii < 1:
         if ((radii+delta_radii/2)**2 - (radii-delta_radii/2)**2) * delta_theta/2 > vol_limit and space_out:
             delta_theta /= 2
-
         theta = delta_theta/2
         while theta < 2 * math.pi:
-            lev_nodes.append([theta, radii*outer_diameter/2])
+            lev_nodes.append([theta, radii*outer_diameter/2, delta_theta])
             theta += delta_theta
         radii += delta_radii
 
     cyl_nodes = []
-
     height = delta_height / 2
     while height < max_height:
         for lev in range(0, len(lev_nodes)):
             cyl_nodes.append(lev_nodes[lev] + [height])
         height += delta_height
 
-    xyz_nodes = []
+    del lev_nodes
 
+    # TODO test to see if a Pandas-based form of generating the xyz nodes is more efficient.
+    xyzn_nodes = []
     for node in cyl_nodes:
         x = base_center[0] + node[1] * math.cos(node[0])
         y = base_center[1] + node[1] * math.sin(node[0])
-        z = base_center[2] + node[2]
-        xyz_nodes.append([x, y, z])
+        z = base_center[2] + node[3]
+        n = [x - base_center[0],
+             y - base_center[1],
+             z - base_center[2]]
+        n = np.asarray(n)
+        # TODO Replace the normalize vector function with the similar yet more efficient scipy pre-processing function.
+        n = normalize_vector(n)
+        xyzn_nodes.append([x, y, z, n])
 
-    result = {'xyz': np.asarray(xyz_nodes),
-              'cyl': np.asarray(cyl_nodes),
-              'delta_theta': delta_theta,
-              'delta_radii': delta_radii,
-              'delta_height': delta_height}
+    df = pd.DataFrame(data=np.asarray(cyl_nodes), columns=['theta', 'radii', 'delta_theta', 'height'])
 
-    return result
+    df['lft_nbr'] = 0
+    df['rht_nbr'] = 0
+    df['inr_nbr'] = 0
+    df['otr_nbr'] = pd.np.empty((len(df), 0)).tolist()
 
-pd.set_option('display.max_rows', 500)
-pd.set_option('display.max_columns', 500)
+    for node in range(0, len(df)):
+        # finding the left neighbor
+        my_df1 = df[df['radii'] == df.loc[node]['radii']]
+        my_df2 = my_df1[my_df1['theta'] > df.loc[node]['theta']]
+        if len(my_df2) != 0:
+            nbr = my_df2[['theta']].idxmin()
+        else:
+            nbr = my_df1[['theta']].idxmin()
+        df.at[node, 'lft_nbr'] = nbr
+
+        # finding the right neighbor
+        my_df2 = my_df1[my_df1['theta'] < df.loc[node]['theta']]
+        if len(my_df2) != 0:
+            nbr = my_df2[['theta']].idxmax()
+        else:
+            nbr = my_df1[['theta']].idxmax()
+        df.at[node, 'rht_nbr'] = nbr
+
+        # finding the inner neighbor
+        my_df1 = df[df['radii'] < df.loc[node]['radii']]
+        if len(my_df1) != 0:
+            my_df1 = my_df1[my_df1['radii'] == my_df1['radii'].max()]
+            my_df1['theta_diff'] = abs(my_df1['theta'] - df.loc[node]['theta'])
+            nbr = my_df1[['theta_diff']].idxmin()
+        else:
+            nbr = None
+        df.at[node, 'inr_nbr'] = nbr
+
+    df['inr_nbr'] = df['inr_nbr'].astype('Int64')
+
+    for node in range(0, len(df)):
+        # finding the outer neighbors
+        my_df1 = df[df['inr_nbr'] == node]
+        if len(my_df1) != 0:
+            nbr = [i for i in list(my_df1.index.values)]
+        else:
+            nbr = []
+        df.at[node, 'otr_nbr'] = nbr
+
+    df_to_merge = pd.DataFrame(np.asarray(xyzn_nodes), columns=['x', 'y', 'z', 'n'])
+
+    df = df.merge(df_to_merge, left_index=True, right_index=True)
+
+    df['delta_radii'] = delta_radii
+    df['delta_height'] = delta_height
+
+    df = df[['theta',
+             'radii',
+             'height',
+             'x',
+             'y',
+             'z',
+             'n',
+             'lft_nbr',
+             'rht_nbr',
+             'inr_nbr',
+             'otr_nbr',
+             'delta_theta',
+             'delta_radii',
+             'delta_height']]
+
+    return df
+
+
+pd.set_option('display.max_rows', 1000)
+pd.set_option('display.max_columns', 1000)
 pd.set_option('display.width', 1000)
+
+
 
 if __name__ == '__main__':
     """
@@ -359,41 +428,19 @@ if __name__ == '__main__':
     '''  # Testing for vector normalization function and is_plane function.
     """  # Older Testing
 
-    ans = create_cyl_nodes(rings=19,
-                           slices=2,
-                           layers=1,
+    from PostOffice import *
+
+    ans = create_cyl_nodes(rings=5,
+                           slices=3,
+                           layers=4,
                            outer_diameter=20,
                            max_height=3,
-                           base_center=[3, 3, 0],
+                           base_center=[0, 0, 0],
                            space_out=True)
 
-    # df = pd.DataFrame(data=ans['cyl'], columns=['theta', 'radii', 'height'])
-
-    '''
-    df['left_nbr'] = 0
-    df['right_nbr'] = 0
-    df['inside_nbrs'] = 0
-    df['outside_nbrs'] = 0
-    df['lower_nbrs'] = 0
-    df['upper_nbr'] = 0
-    '''
-
-    # df['area'] = ((df['radii']+ans['delta_radii']/2)**2 - (df['radii']-ans['delta_radii']/2)**2) * ans['delta_theta']/2
-
-    # print(df.head(600))
-    # quit()
+    export_results(dfs=[ans], df_names=['Testing'], open_after=False, index=True)
 
     fig = plt.figure()
-    ax = Axes3D(fig)
-    ax.scatter3D(ans['xyz'].T[0], ans['xyz'].T[1], ans['xyz'].T[2])
-    # ax.set_xlim(left=0, right=6)
-    # ax.set_ylim(bottom=0, top=6)
-    # ax.set_zlim(bottom=0, top=4)
-    ax.set_xlabel('X Axis')
-    ax.set_ylabel('Y Axis')
-    ax.set_zlabel('Z Axis')
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(ans.x.to_list(), ans.y.to_list(), ans.z.to_list(), c='r')
     plt.show()
-
-
-
-

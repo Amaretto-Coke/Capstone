@@ -31,7 +31,7 @@ def import_cases_and_fluids():
     return cases
 
 
-def export_results(dfs=None, df_names=None):
+def export_results(dfs=None, df_names=None, open_after=False, index=False):
     if dfs is None:
         print('No date frames to export.')
     else:
@@ -42,9 +42,11 @@ def export_results(dfs=None, df_names=None):
             writer = append_df_to_excel(filename=path,
                                         sheet_name=sheet_name,
                                         df=dfs[i],
-                                        index=False)
+                                        index=index)
             writer.save()
             writer.close()
+        if open_after:
+            os.system('start ' + path)
 
 
 def append_df_to_excel(filename, df,
