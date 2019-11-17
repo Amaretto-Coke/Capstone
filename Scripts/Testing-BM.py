@@ -10,10 +10,6 @@ from PostOffice import *
 # from scipy.integrate import quad
 # from sklearn import preprocessing
 
-
-
-
-
 ''' 
 Testing Data Export Function
 data = [['chris', 10], ['nick', 15], ['juli', 14]]
@@ -280,9 +276,10 @@ def create_cyl_nodes(slices=1,
 
     df['inr_nbr'] = df['inr_nbr'].astype('Int64')
 
+    # finding the outer neighbors
     for node in range(0, len(df)):
-        # finding the outer neighbors
         my_df1 = df[df['inr_nbr'] == node]
+        my_df1 = my_df1[my_df1['height'] == df.loc[node]['height']]
         if len(my_df1) != 0:
             nbr = [i for i in list(my_df1.index.values)]
         else:
@@ -317,8 +314,6 @@ def create_cyl_nodes(slices=1,
 pd.set_option('display.max_rows', 1000)
 pd.set_option('display.max_columns', 1000)
 pd.set_option('display.width', 1000)
-
-
 
 if __name__ == '__main__':
     """
@@ -432,16 +427,15 @@ if __name__ == '__main__':
 
     ans = create_cyl_nodes(rings=5,
                            slices=3,
-                           layers=4,
+                           layers=10,
                            outer_diameter=20,
                            max_height=3,
                            base_center=[0, 0, 0],
                            space_out=True)
 
-    export_results(dfs=[ans], df_names=['Testing'], open_after=False, index=True)
+    export_results(dfs=[ans], df_names=['Testing'], open_after=True, index=True)
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(ans.x.to_list(), ans.y.to_list(), ans.z.to_list(), c='r')
     plt.show()
-
