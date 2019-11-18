@@ -427,15 +427,19 @@ if __name__ == '__main__':
 
     ans = create_cyl_nodes(rings=5,
                            slices=3,
-                           layers=10,
+                           layers=1,
                            outer_diameter=20,
                            max_height=3,
                            base_center=[0, 0, 0],
                            space_out=True)
 
-    export_results(dfs=[ans], df_names=['Testing'], open_after=True, index=True)
+    try:
+        export_results(dfs=[ans], df_names=['Testing'], open_after=True, index=True)
+    except PermissionError:
+        print('File is locked for editing by user, node network could not be exported.')
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(ans.x.to_list(), ans.y.to_list(), ans.z.to_list(), c='r')
+    ax.set_axis_off()
     plt.show()
