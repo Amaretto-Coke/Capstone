@@ -281,7 +281,7 @@ def create_cyl_wall(df, wall_thickness=None):
     outer_cyl_nodes['radii'] = outer_cyl_nodes['radii'] + wall_thickness
     outer_cyl_nodes.component = 'Wall'
     df = df.append(outer_cyl_nodes, ignore_index=True, sort=False)
-    df.reset_index(inplace=True)
+    df.reset_index(inplace=True, drop=True)
     return df
 
 
@@ -295,7 +295,7 @@ def create_cyl_wall(df, wall_thickness=None):
     outer_cyl_nodes['radii'] = outer_cyl_nodes['radii'] + wall_thickness
     outer_cyl_nodes.component = 'Wall'
     df = df.append(outer_cyl_nodes, ignore_index=True, sort=False)
-    df.reset_index(inplace=True)
+    df.reset_index(inplace=True, drop=True)
     return df
 
 
@@ -398,9 +398,24 @@ def create_cyl_nodes(slices=1,
 
     df = generate_xyzn(df, base_center=base_center)
 
-    df.reset_index(inplace=True)
+    df.reset_index(inplace=True, drop=True)
 
     df = assign_neighbors(df)
+
+    df = df[['component',
+             'theta',
+             'radii',
+             'height',
+             'x',
+             'y',
+             'z',
+             'lft_nbr',
+             'rht_nbr',
+             'inr_nbr',
+             'otr_nbr',
+             'delta_theta',
+             'delta_radii',
+             'delta_height', ]]
 
     return df
 
@@ -626,7 +641,7 @@ if __name__ == '__main__':
                                    idx2=row + 1,
                                    column='Loc'))
 
-    df.reset_index(inplace=True)
+    df.reset_index(inplace=True, drop=True)
     '''  # Temperature Dataframe in hierarchical indexing
 
     '''
@@ -671,17 +686,16 @@ if __name__ == '__main__':
 
     from PostOffice import *
 
-    ans = create_cyl_nodes(rings=6,
+    ans = create_cyl_nodes(rings=3,
                            slices=4,
                            gas_layers=4,
-                           liq_layers=5,
+                           liq_layers=3,
                            cyl_diam=20,
                            cyl_height=3,
                            liq_level=0.5,
                            base_center=[0, 0, 0],
                            space_out=True,
                            vol_factor=1.5)
-
 
     try:
         export_results(dfs=[ans], df_names=['Testing'], open_after=True, index=True)
@@ -692,6 +706,10 @@ if __name__ == '__main__':
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(ans.x.to_list(), ans.y.to_list(), ans.z.to_list(), c=ans.c.to_list(), s=5)
-    # ax.set_axis_off()
+    ax.scatter(ans.x.to_list(),
+               ans.y.to_list(),
+               ans.z.to_list(),
+               c=ans.c.to_list(),
+               s=5)
+    ax.set_axis_off()
     plt.show()
