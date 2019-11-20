@@ -5,7 +5,8 @@ from time import strftime
 import pandas as pd
 
 
-def build_exe_version(script='', description=''):
+def build_exe_version(script='',
+                      description=''):
     os.chdir(os.path.dirname(os.getcwd()))
     if script == '':
         print('There was no script to build.')
@@ -15,13 +16,15 @@ def build_exe_version(script='', description=''):
     generate_version_info(ver=version,
                           original_filename=script,
                           file_description=description)
-    build_exe(script, noconsole=False)
+    build_exe(script, no_console=False)
     exe_file = move_build(script)
 
     return exe_file
 
 
-def generate_version_info(ver, original_filename='ScriptName', file_description=''):
+def generate_version_info(ver,
+                          original_filename='ScriptName',
+                          file_description=''):
 
     ver = [int(i) for i in ver]
     ver = [str(i) for i in ver]
@@ -71,7 +74,11 @@ def generate_version_info(ver, original_filename='ScriptName', file_description=
     version_info.close()
 
 
-def make_version(script, description, new_rendition=False, new_release=False, new_edition=False):
+def make_version(script,
+                 description,
+                 new_rendition=False,
+                 new_release=False,
+                 new_edition=False):
     dtypes = {'Script': 'str',
               'Edition': 'int',
               'Release': 'int',
@@ -136,13 +143,17 @@ def make_version(script, description, new_rendition=False, new_release=False, ne
     return ver_list
 
 
-def build_exe(py_script, onefile=True, noconsole=True, icon=True, version=True):
-    distpath = ' --distpath=' + os.getcwd() + r'\dist'
-    workpath = ' --workpath=' + os.getcwd() + r'\build'
-    command = 'pyinstaller ' + os.path.abspath(os.getcwd() + r'\Scripts\\' + py_script + '.py') + distpath + workpath
-    if onefile:
+def build_exe(py_script,
+              one_file=True,
+              no_console=True,
+              icon=True,
+              version=True):
+    dist_path = ' --distpath=' + os.getcwd() + r'\dist'
+    work_path = ' --workpath=' + os.getcwd() + r'\build'
+    command = 'pyinstaller ' + os.path.abspath(os.getcwd() + r'\Scripts\\' + py_script + '.py') + dist_path + work_path
+    if one_file:
         command += ' --onefile'
-    if noconsole:
+    if no_console:
         command += ' --noconsole'
     if icon:
         command += ' --icon=' + os.getcwd() + r'\icon.ico'

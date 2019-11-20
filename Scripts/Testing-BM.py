@@ -188,37 +188,262 @@ def normalize_vector(vector):
     return vector/vector_mag
 
 
+def create_layer_nodes(slices=1,
+                       rings=1,
+                       space_out=False,
+                       vol_factor=1.2):
+
+    delta_theta = 2 * math.pi / slices
+    delta_radii = 1/rings
+
+    lev_nodes = []
+    radii = delta_radii / 2
+    vol_limit = ((radii+delta_radii/2)**2 - (radii-delta_radii/2)**2) * delta_theta / 2 * vol_factor
+    # The volume of the innermost ring * 1.2 is the the maximum volume that an element in a new ring may have.
+    # Otherwise, the number of elements in that ring get doubled.
+
+    while radii < 1:
+        e_vol = ((radii+delta_radii/2)**2 - (radii-delta_radii/2)**2) * delta_theta/2
+        if space_out:
+            while e_vol > vol_limit:
+                delta_theta /= 2
+                e_vol = ((radii + delta_radii / 2) ** 2 - (radii - delta_radii / 2) ** 2) * delta_theta / 2
+        theta = delta_theta/2
+        while theta < 2 * math.pi:
+            lev_nodes.append([theta, radii, delta_theta])
+            theta += delta_theta
+        radii += delta_radii
+
+    df = pd.DataFrame(data=np.asarray(lev_nodes), columns=['theta', 'radii', 'delta_theta'])
+
+    df['delta_radii'] = delta_radii
+
+    return df
+
+
+def generate_xyzn(df, base_center=None):
+
+    if base_center is None:
+        base_center = [0, 0, 0]
+
+    df['x'] = base_center[0] + \
+              df['radii'] * \
+              df['theta'].apply(lambda theta: math.cos(theta))
+    df['y'] = base_center[1] + \
+              df['radii'] * \
+              df['theta'].apply(lambda theta: math.sin(theta))
+    df['z'] = base_center[2] + df['height']
+    df['n'] = np.empty((len(df), 0)).tolist()
+    for i in range(0, len(df.index)):
+        delta_x = df.at[i, 'x'] - base_center[0]
+        delta_y = df.at[i, 'y'] - base_center[1]
+        delta_z = df.at[i, 'height'] + base_center[2]
+        df.at[i, 'n'] = [delta_x, delta_y, delta_z]
+
+    return df
+
+
+def create_partial_cyl(layer_df,
+                       layers=1,
+                       cyl_height=1.0,
+                       base_center=None,
+                       component=None):
+
+    delta_height = (cyl_height - base_center[2])/layers
+    height = delta_height/2 + base_center[2]
+    cyl_df = pd.DataFrame(columns=['theta', 'radii', 'delta_theta', 'height'])
+    my_layer_df = pd.DataFrame(columns=['theta', 'radii', 'delta_theta'])
+
+    while height < cyl_height:
+        my_layer_df = layer_df.copy()
+        my_layer_df['height'] = height
+        cyl_df = cyl_df.append(my_layer_df, ignore_index=True, sort=False)
+        height += delta_height
+
+    cyl_df['component'] = component
+    del my_layer_df
+    cyl_df.reset_index(inplace=True, drop=True)
+
+    cyl_df['delta_height'] = delta_height
+
+    # cyl_df = generate_xyzn(cyl_df, base_center=base_center)
+
+    return cyl_df
+
+
+def create_cyl_wall(df, wall_thickness=None):
+    if df is None:
+        print('No data frame to create cylinder wall from.')
+        quit()
+    if wall_thickness is None:
+        wall_thickness = df['delta_radii'].max()
+    outer_cyl_nodes = df[df['radii'] == df['radii'].max()]
+    outer_cyl_nodes['radii'] = outer_cyl_nodes['radii'] + wall_thickness
+    outer_cyl_nodes.component = 'Wall'
+    df = df.append(outer_cyl_nodes, ignore_index=True, sort=False)
+    df.reset_index(inplace=True)
+    return df
+
+
+def create_cyl_wall(df, wall_thickness=None):
+    if df is None:
+        print('No data frame to create cylinder wall from.')
+        quit()
+    if wall_thickness is None:
+        wall_thickness = df['delta_radii'].max()
+    outer_cyl_nodes = df.loc[df['radii'] == df['radii'].max()].copy()
+    outer_cyl_nodes['radii'] = outer_cyl_nodes['radii'] + wall_thickness
+    outer_cyl_nodes.component = 'Wall'
+    df = df.append(outer_cyl_nodes, ignore_index=True, sort=False)
+    df.reset_index(inplace=True)
+    return df
+
+
+def assign_neighbors(df):
+    df['lft_nbr'] = 0
+    df['rht_nbr'] = 0
+    df['inr_nbr'] = 0
+    df['otr_nbr'] = pd.np.empty((len(df), 0)).tolist()
+
+    # Finding the left, right, and inner neighbors.
+    for node in range(0, len(df)):
+        # finding the left neighbor
+        my_df1 = df[df['radii'] == df.loc[node]['radii']]
+        my_df2 = my_df1[my_df1['theta'] > df.loc[node]['theta']]
+        if len(my_df2) != 0:
+            nbr = my_df2[['theta']].idxmin()
+        else:
+            nbr = my_df1[['theta']].idxmin()
+        df.at[node, 'lft_nbr'] = nbr
+
+        # finding the right neighbor
+        my_df2 = my_df1[my_df1['theta'] < df.loc[node]['theta']]
+        if len(my_df2) != 0:
+            nbr = my_df2[['theta']].idxmax()
+        else:
+            nbr = my_df1[['theta']].idxmax()
+        df.at[node, 'rht_nbr'] = nbr
+
+        # finding the inner neighbor
+        my_df1 = df[df['radii'] < df.loc[node]['radii']]
+        if len(my_df1) != 0:
+            my_df1 = my_df1[my_df1['radii'] == my_df1['radii'].max()]
+            my_df1['theta_diff'] = abs(my_df1['theta'] - df.loc[node]['theta'])
+            nbr = my_df1[['theta_diff']].idxmin()
+        else:
+            nbr = None
+        df.at[node, 'inr_nbr'] = nbr
+
+    df['inr_nbr'] = df['inr_nbr'].astype('Int64')
+
+    # finding the outer neighbors
+    for node in range(0, len(df)):
+        my_df1 = df[df['inr_nbr'] == node]
+        my_df1 = my_df1[my_df1['height'] == df.loc[node]['height']]
+        if len(my_df1) != 0:
+            nbr = [i for i in list(my_df1.index.values)]
+        else:
+            nbr = []
+        df.at[node, 'otr_nbr'] = nbr
+
+    return df
+
+
+def create_cyl_nodes(slices=1,
+                     rings=1,
+                     gas_layers=1,
+                     liq_layers=1,
+                     cyl_diam=1.0,
+                     cyl_height=1.0,
+                     liq_level=0.5,
+                     base_center=None,
+                     space_out=False,
+                     vol_factor=1.0):
+
+    if base_center is None:
+        base_center = [0, 0, 0]
+
+    layer_df = create_layer_nodes(slices=slices,
+                                  rings=rings,
+                                  space_out=space_out,
+                                  vol_factor=vol_factor)
+
+    liq_df = create_partial_cyl(layer_df=layer_df,
+                                layers=liq_layers,
+                                cyl_height=liq_level,
+                                base_center=base_center,
+                                component='Liquid')
+
+    base_center = [base_center[0],
+                   base_center[1],
+                   base_center[2] + liq_level]
+
+    gas_df = create_partial_cyl(layer_df=layer_df,
+                                layers=gas_layers,
+                                cyl_height=cyl_height - liq_level,
+                                base_center=base_center,
+                                component='Gas')
+
+    df = liq_df.append(gas_df, ignore_index=True, sort=False)
+
+    del liq_df, gas_df
+
+    df['radii'] = df['radii'] * cyl_diam / 2
+
+    base_center = [base_center[0],
+                   base_center[1],
+                   base_center[2] - liq_level]
+
+    df = create_cyl_wall(df)
+
+    df = generate_xyzn(df, base_center=base_center)
+
+    df.reset_index(inplace=True)
+
+    df = assign_neighbors(df)
+
+    return df
+
+
+'''
 def create_cyl_nodes(slices=1,
                      rings=1,
                      layers=1,
-                     outer_diameter=1,
-                     max_height=1,
+                     cyl_diam=1.0,
+                     cyl_height=1.0,
                      base_center=None,
-                     space_out=False):
+                     space_out=False,
+                     vol_factor=1.0,
+                     component=None):
 
     if base_center is None:
         base_center = [0, 0, 0]
 
     delta_theta = 2 * math.pi / slices
-    delta_radii = 1/2/rings
-    delta_height = max_height/layers
+    delta_radii = 1/rings
+    delta_height = cyl_height / layers
 
     lev_nodes = []
     radii = delta_radii / 2
-    vol_limit = ((radii+delta_radii/2)**2 - (radii-delta_radii/2)**2) * delta_theta / 2 * 1.5
+    vol_limit = ((radii+delta_radii/2)**2 - (radii-delta_radii/2)**2) * delta_theta / 2 * vol_factor
+    # The volume of the innermost ring * 1.2 is the the maximum volume that an element in a new ring may have.
+    # Otherwise, the number of elements in that ring get doubled.
 
     while radii < 1:
-        if ((radii+delta_radii/2)**2 - (radii-delta_radii/2)**2) * delta_theta/2 > vol_limit and space_out:
-            delta_theta /= 2
+        e_vol = ((radii+delta_radii/2)**2 - (radii-delta_radii/2)**2) * delta_theta/2
+        if space_out:
+            while e_vol > vol_limit:
+                delta_theta /= 2
+                e_vol = ((radii + delta_radii / 2) ** 2 - (radii - delta_radii / 2) ** 2) * delta_theta / 2
         theta = delta_theta/2
         while theta < 2 * math.pi:
-            lev_nodes.append([theta, radii*outer_diameter/2, delta_theta])
+            lev_nodes.append([theta, radii * cyl_diam / 2, delta_theta])
             theta += delta_theta
         radii += delta_radii
 
     cyl_nodes = []
     height = delta_height / 2
-    while height < max_height:
+    while height < cyl_height:
         for lev in range(0, len(lev_nodes)):
             cyl_nodes.append(lev_nodes[lev] + [height])
         height += delta_height
@@ -246,6 +471,7 @@ def create_cyl_nodes(slices=1,
     df['inr_nbr'] = 0
     df['otr_nbr'] = pd.np.empty((len(df), 0)).tolist()
 
+    # Finding the left, right, and inner neighbors.
     for node in range(0, len(df)):
         # finding the left neighbor
         my_df1 = df[df['radii'] == df.loc[node]['radii']]
@@ -290,8 +516,13 @@ def create_cyl_nodes(slices=1,
 
     df = df.merge(df_to_merge, left_index=True, right_index=True)
 
-    df['delta_radii'] = delta_radii
+    df['delta_radii'] = delta_radii * cyl_diam / 2
     df['delta_height'] = delta_height
+    df['otr_area'] = (df['radii'] + df['delta_radii']/2) * df['height']
+    df['volume'] = (df['height'] *
+                    ((df['radii'] + df['delta_radii']/2)**2 - (df['radii']-df['delta_radii']/2)**2) *
+                    df['delta_theta'])
+    df['component'] = component
 
     df = df[['theta',
              'radii',
@@ -306,17 +537,27 @@ def create_cyl_nodes(slices=1,
              'otr_nbr',
              'delta_theta',
              'delta_radii',
-             'delta_height']]
+             'delta_height',
+             'otr_area',
+             'volume']]
 
     return df
+'''
 
 
-pd.set_option('display.max_rows', 1000)
-pd.set_option('display.max_columns', 1000)
-pd.set_option('display.width', 1000)
+def color_nodes_by_component(component):
+    if component == 'Liquid':
+        color = 'b'
+    elif component == 'Gas':
+        color = 'c'
+    else:
+        color = 'k'
+    return color
+
 
 if __name__ == '__main__':
     """
+    
     '''
         ax = plt.gca()
         ax.pie([45, 45, 45, 45, 45, 45, 45, 45], radius=5, wedgeprops={'fc': 'none', 'edgecolor': 'k'})
@@ -421,25 +662,36 @@ if __name__ == '__main__':
 
     print(ans)
     '''  # Testing for vector normalization function and is_plane function.
+    
     """  # Older Testing
+
+    pd.set_option('display.max_rows', 2000)
+    pd.set_option('display.max_columns', 2000)
+    pd.set_option('display.width', 2000)
 
     from PostOffice import *
 
-    ans = create_cyl_nodes(rings=5,
-                           slices=3,
-                           layers=1,
-                           outer_diameter=20,
-                           max_height=3,
+    ans = create_cyl_nodes(rings=6,
+                           slices=4,
+                           gas_layers=4,
+                           liq_layers=5,
+                           cyl_diam=20,
+                           cyl_height=3,
+                           liq_level=0.5,
                            base_center=[0, 0, 0],
-                           space_out=True)
+                           space_out=True,
+                           vol_factor=1.5)
+
 
     try:
         export_results(dfs=[ans], df_names=['Testing'], open_after=True, index=True)
     except PermissionError:
-        print('File is locked for editing by user, node network could not be exported.')
+        print('File is locked for editing by user.\nNode network could not be exported.')
+
+    ans['c'] = ans['component'].apply(lambda cpnt: color_nodes_by_component(cpnt))
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(ans.x.to_list(), ans.y.to_list(), ans.z.to_list(), c='r')
-    ax.set_axis_off()
+    ax.scatter(ans.x.to_list(), ans.y.to_list(), ans.z.to_list(), c=ans.c.to_list(), s=5)
+    # ax.set_axis_off()
     plt.show()
