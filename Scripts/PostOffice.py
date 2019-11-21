@@ -1,34 +1,23 @@
 import pandas as pd
 import os
-import math
 from string import ascii_letters
 from openpyxl import load_workbook
 
 
-
 def import_cases_and_fluids():
     # Creating a path string to the user interface excel file
-    path = os.path.dirname(os.getcwd()) + r'\MailBox.xlsm'
+    path = os.path.dirname(os.getcwd()) + r'\MailBox.xlsx'
 
     # Importing the two Excel sheets as two new data frames
-    cases = pd.read_excel(path, sheet_name='Cases')
-    fluid_properties = pd.read_excel(path, sheet_name='FluidProperties')
+    inputs = pd.read_excel(path, sheet_name='Inputs')
 
-    # Deleting the units from the column headers
-    cases.columns = [col[0:col.find('[')] for col in cases.columns]
+    #
+    inputs.set_index('Property', drop=True, inplace=True)
 
-    # Creating two new columns, of the inside cylinder volume and the initial liquid volume
-    cases['CylinderVolume'] = math.pi * (cases.TankID / 2) ** 2 * cases.TankHeight
-    cases['LiquidVolume'] = math.pi * (cases.TankID / 2) ** 2 * cases.FluidLevel
+    result = inputs.to_dict(orient='dict')['Value']
 
-    # Merges the fluid properties into the cases dataframe
-    cases = cases.merge(fluid_properties, on='FluidName', how='left')
-
-    # Clears the now useless fluid properties dataframe
-    del fluid_properties
-
-    # Returns a the merged dataframe
-    return cases
+    # Returns a the inputs as a dictionary
+    return result
 
 
 def export_results(dfs=None, df_names=None, open_after=False, index=False):
@@ -137,13 +126,3 @@ def validate_excel_sheet_name(val_string):
             if c not in allowed:
                 val_string = val_string.replace(c, '-')
         return val_string
-
-
-def get_df_name(df):
-    name = [x for x in locals() if locals()[x] is df][0]
-    return name
-
-
-
-
-
