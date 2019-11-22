@@ -658,7 +658,7 @@ if __name__ == '__main__':
                    'Gas': inputs['Air_k[W/mK]'],
                    'Wall': inputs['Wall_k[W/mK]']}
 
-        comp_rho = {'Liquid': inputs['Liquid_rho[kg/m3]'],
+        comp_rhos = {'Liquid': inputs['Liquid_rho[kg/m3]'],
                     'Gas': inputs['Air_rho[kg/m3]'],
                     'Wall': inputs['Wall_rho[kg/m3]']}
 
@@ -690,7 +690,7 @@ if __name__ == '__main__':
 
         ans = incoming_element_power(ans, p2)
 
-        ans = create_node_fdm_constants(ans, comp_rho, comp_Cps, comp_ks, inputs['TimeStep[s]'])
+        ans = create_node_fdm_constants(ans, comp_rhos, comp_Cps, comp_ks, inputs['TimeStep[s]'])
 
         time_steps = list(range(0, inputs['TimeIterations[#]']+1))
         time_steps = [i * inputs['TimeStep[s]'] for i in time_steps]
@@ -705,17 +705,16 @@ if __name__ == '__main__':
 
         temp_df['Temp[K]'] = inputs['Ambient/InitialTemp[C]'] + 273.15
 
-        temp_df['d1'] = np.nan
-        temp_df['d2'] = np.nan
-        temp_df['d3'] = np.nan
-        temp_df['k'] = np.nan
-        temp_df['alpha'] = np.nan
-        temp_df['heat_gen'] = np.nan
-        temp_df['inr_temp'] = np.nan
-        temp_df['otr_temp'] = np.nan
-        temp_df['lft_temp'] = np.nan
-        temp_df['rht_temp'] = np.nan
-        temp_df['tock_temp'] = np.nan
+        debug_columns = ['d1', 'd2', 'd3',
+                         'k', 'alpha', 'heat_gen',
+                         'inr_temp', 'otr_temp',
+                         'lft_temp', 'rht_temp',
+                         'tock_temp']
+
+        for col in debug_columns:
+            temp_df[col] = np.nan
+
+        del debug_columns, time_steps, idx, Ti, Tf, p1, p2, vf, tank_od, comp_ks, comp_Cps, comp_rhos
 
         for t in time_steps[:-1]:
             for n in nodes:
@@ -732,7 +731,7 @@ if __name__ == '__main__':
                                open_after=True,
                                index=True)
             except PermissionError:
-                print('File is locked for editing by user.\nNode network could not be exported.')
+                print('File is locked for editing by user.\n\tNode network could not be exported.')
 
         if show_geo:
             fig = plt.figure()

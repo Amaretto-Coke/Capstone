@@ -1,7 +1,7 @@
 from Scripts.ExeFactory import *
 from pathlib import Path
 
-description = 'Testing Build'
+description = 'Testing Build of FireRedTank'
 
 Scripts = [Path(f).stem for f in os.listdir(os.getcwd())]
 scriptDict = {Scripts.index(s): s for s in Scripts}
@@ -27,7 +27,7 @@ while isinstance(ans, str) or not inIndex:
 
 print('Building', Scripts[ans]+'.py')
 
-exe = build_exe_version(script=Scripts[ans], description='An application to run the ProductionPlotter.py code.')
+exe = build_exe_version(script=Scripts[ans], description='')
 
 print('Build successful:', Scripts[ans] + '.exe')
 

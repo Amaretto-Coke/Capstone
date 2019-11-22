@@ -29,9 +29,9 @@ def generate_version_info(ver,
     ver = [int(i) for i in ver]
     ver = [str(i) for i in ver]
 
-    company_name = 'Gran Tierra Energy'
+    company_name = 'University of Calgary'
     legal_copyright = ' ' + company_name + '. All rights reserved.'
-    product_name = 'Emerald_' + original_filename
+    product_name = 'FireRedTank_' + original_filename
     product_version = ver[0] + '.' + ver[1] + '.' + ver[2] + '.' + ver[3]
     file_version = product_version + ' (win7sp1_rtm.101119-1850)'
 
