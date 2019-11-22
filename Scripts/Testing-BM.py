@@ -499,6 +499,10 @@ def update_node_temp(prop_df, temp_df, delta_time, tick, node):
     return temp_df
 
 
+def run_simulation():
+    pass
+
+
 if __name__ == '__main__':
     try:
         pd.set_option('display.max_rows', 2000)
@@ -672,7 +676,7 @@ if __name__ == '__main__':
 
         Ti = 300
         Tf = inputs['FireTemp[C]'] + 273.15
-        p1 = 1 * 5.67e-8 * (Tf**4 - Ti**4)
+        p1 = 1 * 5.67e-8 * (Tf**4 - Ti**4) / inputs['TankHeight[m]'] / inputs['TankID[m]']
         p2 = p1 * vf
 
         ans = create_cyl_nodes(rings=inputs['rings'],
@@ -714,7 +718,7 @@ if __name__ == '__main__':
         for col in debug_columns:
             temp_df[col] = np.nan
 
-        del debug_columns, time_steps, idx, Ti, Tf, p1, p2, vf, tank_od, comp_ks, comp_Cps, comp_rhos
+        del debug_columns, idx, Ti, Tf, p1, p2, vf, tank_od, comp_ks, comp_Cps, comp_rhos
 
         for t in time_steps[:-1]:
             for n in nodes:
