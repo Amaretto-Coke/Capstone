@@ -339,6 +339,9 @@ def create_cyl_nodes(slices=1,
     if base_center is None:
         base_center = [0, 0, 0]
 
+    if gas_layers == 0:
+        cyl_height = liq_level
+
     layer_df = create_layer_nodes(slices=slices,
                                   rings=rings,
                                   space_out=space_out,
@@ -354,15 +357,18 @@ def create_cyl_nodes(slices=1,
                    base_center[1],
                    base_center[2] + liq_level]
 
-    gas_df = create_partial_cyl(layer_df=layer_df,
-                                layers=gas_layers,
-                                cyl_height=cyl_height - liq_level,
-                                base_center=base_center,
-                                comp='Gas')
+    if gas_layers != 0:
+        gas_df = create_partial_cyl(layer_df=layer_df,
+                                    layers=gas_layers,
+                                    cyl_height=cyl_height - liq_level,
+                                    base_center=base_center,
+                                    comp='Gas')
 
-    df = liq_df.append(gas_df, ignore_index=True, sort=False)
-
-    del liq_df, gas_df
+        df = liq_df.append(gas_df, ignore_index=True, sort=False)
+        del liq_df, gas_df
+    else:
+        df = liq_df
+        del liq_df
 
     df['radii'] = df['radii'] * cyl_diam / 2
 
@@ -417,6 +423,7 @@ def incoming_element_power(df, power2):
     df['power_gen'] = (df['radii'] == df['radii'].max()) * power2 * df['integral'] * df['otr_area']
     df.drop(labels=['integral', 'otr_area', 'left_theta', 'right_theta'], axis='columns', inplace=True)
     return df
+
 
 
 def create_node_fdm_constants(df,
