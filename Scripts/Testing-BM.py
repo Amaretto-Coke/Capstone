@@ -465,7 +465,7 @@ def update_node_temp(prop_df, temp_df, delta_time, tick, node):
 
     inr_node = prop_df.iloc[node]['inr_nbr']
     if inr_node is np.nan:
-        inr_temp = 0
+        inr_temp = tick_temp
     else:
         inr_temp = temp_df.loc[(tick, inr_node)]['Temp[K]']
 
@@ -483,7 +483,7 @@ def update_node_temp(prop_df, temp_df, delta_time, tick, node):
             otr_temp += temp_df.loc[(tick, o_n)]['Temp[K]']
         otr_temp /= len(otr_nodes)
     else:
-        otr_temp = 0
+        otr_temp = tick_temp
 
     tock_temp = (
             d1 * (inr_temp - 2 * tick_temp + otr_temp) +
@@ -692,6 +692,17 @@ if __name__ == '__main__':
 
         ans['c'] = ans['comp'].apply(lambda cpnt: color_nodes_by_component(cpnt))
 
+        if show_geo:
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            ax.scatter(ans.x.to_list(),
+                       ans.y.to_list(),
+                       ans.z.to_list(),
+                       c=ans.c.to_list(),
+                       s=5)
+            # ax.set_axis_off()
+            plt.show()
+
         ans = incoming_element_power(ans, p2)
 
         ans = create_node_fdm_constants(ans, comp_rhos, comp_Cps, comp_ks, inputs['TimeStep[s]'])
@@ -736,17 +747,6 @@ if __name__ == '__main__':
                                index=True)
             except PermissionError:
                 print('File is locked for editing by user.\n\tNode network could not be exported.')
-
-        if show_geo:
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            ax.scatter(ans.x.to_list(),
-                       ans.y.to_list(),
-                       ans.z.to_list(),
-                       c=ans.c.to_list(),
-                       s=5)
-            # ax.set_axis_off()
-            plt.show()
 
     except BaseException:
         import sys
