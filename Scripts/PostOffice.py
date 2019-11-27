@@ -5,19 +5,20 @@ from openpyxl import load_workbook
 
 
 def import_cases_and_fluids():
-    # Creating a path string to the user interface excel file
+    # Creating a path string to the user interface excel file.
     path = os.path.dirname(os.getcwd()) + r'\MailBox.xlsx'
 
-    # Importing the two Excel sheets as two new data frames
+    # Importing the two Excel sheets as two new data frames.
     inputs = pd.read_excel(path, sheet_name='Inputs')
 
-    #
+    # Setting the index to the property column.
     inputs.set_index('Property', drop=True, inplace=True)
 
-    result = inputs.to_dict(orient='dict')['Value']
+    # Creating a dict that uses the index of the dataframe as keys.
+    inputs = inputs.to_dict(orient='dict')['Value']
 
-    # Returns a the inputs as a dictionary
-    return result
+    # Returns a the inputs as a dictionary.
+    return inputs
 
 
 def export_results(dfs=None, df_names=None, open_after=False, index=False):
