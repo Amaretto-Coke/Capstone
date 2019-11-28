@@ -184,8 +184,6 @@ def create_partial_cyl(layer_df, layers=1, cyl_height=1.0, base_center=None, com
 
     cyl_df['delta_height'] = delta_height
 
-    # cyl_df = generate_xyzn(cyl_df, base_center=base_center)
-
     return cyl_df
 
 
@@ -263,7 +261,8 @@ def create_cyl_nodes(slices=1,
                      liq_level=0.5,
                      base_center=None,
                      space_out=False,
-                     vol_factor=1.0):
+                     vol_factor=1.0,
+                     wall_thickness=None):
 
     if base_center is None:
         base_center = [0, 0, 0]
@@ -283,19 +282,23 @@ def create_cyl_nodes(slices=1,
                                 base_center=base_center,
                                 comp='Liquid')
 
-    base_center = [base_center[0],
-                   base_center[1],
-                   base_center[2] + liq_level]
-
     if gas_layers != 0:
+        base_center = [base_center[0],
+                       base_center[1],
+                       base_center[2] + liq_level]
+
         gas_df = create_partial_cyl(layer_df=layer_df,
                                     layers=gas_layers,
-                                    cyl_height=cyl_height - liq_level,
+                                    cyl_height=cyl_height,
                                     base_center=base_center,
                                     comp='Gas')
 
         df = liq_df.append(gas_df, ignore_index=True, sort=False)
         del liq_df, gas_df
+
+        base_center = [base_center[0],
+                       base_center[1],
+                       base_center[2] - liq_level]
     else:
         df = liq_df
         del liq_df
@@ -305,13 +308,9 @@ def create_cyl_nodes(slices=1,
     df['lft_theta'] = df['theta'] + df['delta_theta'] / 2
     df['rht_theta'] = df['theta'] - df['delta_theta'] / 2
 
-    df['volume'] = 4 * df['delta_radii'] * df['radii'] * (df['lft_theta'] - df['rht_theta'])**2**.5 / 2
+    df = create_cyl_wall(df, wall_thickness=wall_thickness)
 
-    base_center = [base_center[0],
-                   base_center[1],
-                   base_center[2] - liq_level]
-
-    # df = create_cyl_wall(df)
+    df['volume'] = 4 * df['delta_radii'] * df['radii'] * (df['lft_theta'] - df['rht_theta']) ** 2 ** .5 / 2
 
     df = generate_xyzn(df, base_center=base_center)
 

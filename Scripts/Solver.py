@@ -177,13 +177,13 @@ if __name__ == '__main__':
         '''  # Temperature Dataframe in hierarchical indexing.
     
         '''
-        ans = vf_plane_to_cyl1(s=20, r=10, l=10, t=20, n=100)
+        geo_prop_df = vf_plane_to_cyl1(s=20, r=10, l=10, t=20, n=100)
     
-        print(ans)
+        print(geo_prop_df)
     
-        ans = vf_plane_to_cyl2(s=20, r=10, l=10, t=20, n=100)
+        geo_prop_df = vf_plane_to_cyl2(s=20, r=10, l=10, t=20, n=100)
     
-        print(ans)
+        print(geo_prop_df)
         '''  # Comparison of View Factor Formulas.
     
         '''
@@ -205,15 +205,15 @@ if __name__ == '__main__':
     
         #  print('The equation is {0}x + {1}y + {2}z = {3}'.format(a, b, c, d))
     
-        ans = points_all_on_plane(p1=p1, p2=p2, p3=p3, p4=p4)
+        geo_prop_df = points_all_on_plane(p1=p1, p2=p2, p3=p3, p4=p4)
     
-        print(ans)
+        print(geo_prop_df)
         '''  # Testing for vector normalization function and is_plane function.
         
         '''
         from PostOffice import *
     
-        ans = create_cyl_nodes(rings=3,
+        geo_prop_df = create_cyl_nodes(rings=3,
                                slices=4,
                                gas_layers=4,
                                liq_layers=3,
@@ -225,18 +225,18 @@ if __name__ == '__main__':
                                vol_factor=1.5)
     
         try:
-            export_results(dfs=[ans], df_names=['Testing'], open_after=True, index=True)
+            export_results(dfs=[geo_prop_df], df_names=['Testing'], open_after=True, index=True)
         except PermissionError:
             print('File is locked for editing by user.\nNode network could not be exported.')
     
-        ans['c'] = ans['comp'].apply(lambda cpnt: color_nodes_by_component(cpnt))
+        geo_prop_df['c'] = geo_prop_df['comp'].apply(lambda cpnt: color_nodes_by_component(cpnt))
     
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-        ax.scatter(ans.x.to_list(),
-                   ans.y.to_list(),
-                   ans.z.to_list(),
-                   c=ans.c.to_list(),
+        ax.scatter(geo_prop_df.x.to_list(),
+                   geo_prop_df.y.to_list(),
+                   geo_prop_df.z.to_list(),
+                   c=geo_prop_df.c.to_list(),
                    s=5)
         ax.set_axis_off()
         plt.show()
@@ -271,28 +271,34 @@ if __name__ == '__main__':
 
         print('Creating cylinder...\n')
 
-        ans = create_cyl_nodes(rings=inputs['rings'],
-                               slices=inputs['slices'],
-                               gas_layers=inputs['gas_layers'],
-                               liq_layers=inputs['liq_layers'],
-                               cyl_diam=tank_od,
-                               cyl_height=inputs['TankHeight[m]'],
-                               liq_level=inputs['FluidLevel[m]'],
-                               base_center=[0, 0, 0],
-                               space_out=inputs['space_out'],
-                               vol_factor=inputs['vol_factor'])
+        geo_prop_df = create_cyl_nodes(rings=inputs['rings'],
+                                       slices=inputs['slices'],
+                                       gas_layers=inputs['gas_layers'],
+                                       liq_layers=inputs['liq_layers'],
+                                       cyl_diam=tank_od,
+                                       cyl_height=inputs['TankHeight[m]'],
+                                       liq_level=inputs['FluidLevel[m]'],
+                                       base_center=[0, 0, 0],
+                                       space_out=inputs['space_out'],
+                                       vol_factor=inputs['vol_factor'],
+                                       wall_thickness=inputs['WallThickness[cm]']/100)
 
-        ans['c'] = ans['comp'].apply(lambda cpnt: color_nodes_by_component(cpnt))
+        geo_prop_df['c'] = geo_prop_df['comp'].apply(lambda cpnt: color_nodes_by_component(cpnt))
 
-        ans = assign_node_view_factor(df=ans, cyl_view_factor=vf)
+        if inputs['show_geo']:
+            print('Building node visual...\n')
+            generate_3d_node_geometry(prop_df=geo_prop_df)
+            exit()
 
-        ans = create_node_fdm_constants(ans, comp_rhos, comp_Cps, comp_ks, inputs['TimeStep[s]'])
+        geo_prop_df = assign_node_view_factor(df=geo_prop_df, cyl_view_factor=vf)
+
+        geo_prop_df = create_node_fdm_constants(geo_prop_df, comp_rhos, comp_Cps, comp_ks, inputs['TimeStep[s]'])
 
         time_steps = list(range(0, inputs['TimeIterations[#]']+1))
         time_steps = [i * inputs['TimeStep[s]'] for i in time_steps]
         time_steps = pd.Series(time_steps)
 
-        nodes = list(ans.index)
+        nodes = list(geo_prop_df.index)
 
         idx = pd.MultiIndex.from_product([time_steps, nodes],
                                          names=['TimeStep', 'NodeIdx'])
@@ -315,7 +321,7 @@ if __name__ == '__main__':
 
         del debug_columns, idx, vf, tank_od, comp_ks, comp_Cps, comp_rhos
 
-        otr_node_radii = ans['radii'].max()
+        otr_node_radii = geo_prop_df['radii'].max()
         fire_temp = inputs['FireTemp[C]'] + 273.15
         amb_temp = inputs['Ambient/InitialTemp[C]'] + 273.15
 
@@ -328,7 +334,7 @@ if __name__ == '__main__':
                                                                total_time_steps),
                   end='', flush=True)
             for n in nodes:
-                temp_df = update_node_temp(prop_df=ans,
+                temp_df = update_node_temp(prop_df=geo_prop_df,
                                            temp_df=temp_df,
                                            delta_time=inputs['TimeStep[s]'],
                                            tick=t,
@@ -342,14 +348,11 @@ if __name__ == '__main__':
         print('\nFinished iterations.\n')
 
         print('Making graphics.\n')
-        if inputs['show_geo']:
-            print('Building node visual...\n')
-            generate_3d_node_geometry(prop_df=ans)
 
-        generate_time_gif(temp_df=temp_df, prop_df=ans, time_steps=time_steps)
+        generate_time_gif(temp_df=temp_df, prop_df=geo_prop_df, time_steps=time_steps)
 
         generate_boundary_graphs(temp_df=temp_df,
-                                 prop_df=ans,
+                                 prop_df=geo_prop_df,
                                  time_steps=time_steps,
                                  features=['heat_flux',
                                            'tock_temp',
@@ -364,7 +367,7 @@ if __name__ == '__main__':
         if export:
             print('Exporting results...\n')
             try:
-                export_results(dfs=[ans, temp_df],
+                export_results(dfs=[geo_prop_df, temp_df],
                                df_names=['node_properties', 'node_temperatures'],
                                open_after=True,
                                index=True)
