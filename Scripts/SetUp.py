@@ -71,32 +71,6 @@ def vf_plane_to_plane(s, l, t):
     return 2 * (a + b + c - d) / (math.pi * x * y)
 
 
-def points_all_on_plane(p1, p2, p3, p4):
-    """
-    Evaluates 4 coordinates to determine if they are on the
-        same plane in 3D space.
-    :param p1: The first    point, as a 1 x 3 numpy array.
-    :param p2: The second   point, as a 1 x 3 numpy array.
-    :param p3: The third    point, as a 1 x 3 numpy array.
-    :param p4: The forth    point, as a 1 x 3 numpy array.
-    :return: True or False, depending on if all 4 points are on a plane.
-    """
-
-    v1 = p2 - p1
-    v2 = p3 - p1
-    v3 = p4 - p1
-
-    cp1 = np.cross(v1, v2)
-    cp2 = np.cross(v1, v3)
-
-    cp1 = normalize_vector(cp1)
-    cp2 = normalize_vector(cp2)
-
-    result = (cp1[0] == cp2[0]) and (cp1[1] == cp2[1]) and (cp1[2] == cp2[2])
-
-    return result
-
-
 def normalize_vector(vector):
     """
     Takes a vector and returns its' unit vector.
@@ -137,8 +111,6 @@ def create_layer_nodes(slices=1, rings=1, space_out=False, vol_factor=1.2, cyl_d
     df['delta_radii'] = delta_radii
 
     df['radii'] = df['radii'] * cyl_diam / 2
-
-    print('Created {0} nodes.\n'.format(len(df)))
 
     return df
 
@@ -308,7 +280,7 @@ def create_cyl_nodes(slices=1,
     df['lft_theta'] = df['theta'] + df['delta_theta'] / 2
     df['rht_theta'] = df['theta'] - df['delta_theta'] / 2
 
-    df = create_cyl_wall(df, wall_thickness=wall_thickness)
+    # df = create_cyl_wall(df, wall_thickness=wall_thickness)
 
     df['volume'] = 4 * df['delta_radii'] * df['radii'] * (df['lft_theta'] - df['rht_theta']) ** 2 ** .5 / 2
 
@@ -336,6 +308,8 @@ def create_cyl_nodes(slices=1,
              'rht_theta',
              'otr_area',
              'volume']]
+
+    print('Created {0} nodes.\n'.format(len(df)))
 
     return df
 

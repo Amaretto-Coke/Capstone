@@ -1,6 +1,8 @@
-import sys, os, math
+import os
+import math
 import imageio
 import numpy as np
+import seaborn as sns
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
@@ -11,47 +13,46 @@ from mpl_toolkits.axisartist.axislines import SubplotZero
 
 def color_nodes_by_component(comp):
     if comp == 'Liquid':
-        color = 'b'
+        color = 'b'  # b for blue
     elif comp == 'Gas':
-        color = 'c'
+        color = 'c'  # c for cyan
     else:
-        color = 'k'
+        color = 'k'  # k for black
     return color
 
 
-def multiple_formatter(denominator=2, number=np.pi, latex='\pi'):
+def multiple_formatter(denominator=2, number=np.pi, latex=r'\pi'):
     def gcd(a, b):
         while b:
-            a, b = b, a%b
+            a, b = b, a % b
         return a
 
     def _multiple_formatter(x, pos):
         den = denominator
         num = np.int(np.rint(den*x/number))
-        com = gcd(num,den)
-        (num,den) = (int(num/com),int(den/com))
-        if den==1:
-            if num==0:
+        com = gcd(num, den)
+        (num, den) = (int(num/com), int(den/com))
+        if den == 1:
+            if num == 0:
                 return r'$0$'
-            if num==1:
-                return r'$%s$'%latex
-            elif num==-1:
-                return r'$-%s$'%latex
+            if num == 1:
+                return r'$%s$' % latex
+            elif num == -1:
+                return r'$-%s$' % latex
             else:
-                return r'$%s%s$'%(num,latex)
+                return r'$%s%s$' % (num, latex)
         else:
-            if num==1:
-                return r'$\frac{%s}{%s}$'%(latex,den)
-            elif num==-1:
-                return r'$\frac{-%s}{%s}$'%(latex,den)
+            if num == 1:
+                return r'$\frac{%s}{%s}$' % (latex, den)
+            elif num == -1:
+                return r'$\frac{-%s}{%s}$' % (latex, den)
             else:
-                return r'$\frac{%s%s}{%s}$'%(num,latex,den)
+                return r'$\frac{%s%s}{%s}$' % (num, latex, den)
     return _multiple_formatter
 
 
 class Multiple:
-
-    def __init__(self, denominator=2, number=np.pi, latex='\pi'):
+    def __init__(self, denominator=2, number=np.pi, latex=r'\pi'):
         self.denominator = denominator
         self.number = number
         self.latex = latex
