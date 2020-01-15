@@ -84,7 +84,11 @@ def normalize_vector(vector):
     return vector/vector_mag
 
 
-def create_layer_nodes(slices=1, rings=1, space_out=False, vol_factor=1.2, cyl_diam=1.0):
+def create_layer_nodes(slices=1,
+                       rings=1,
+                       space_out=False,
+                       vol_factor=1.2,
+                       cyl_diam=np.float64(1.0)):
 
     delta_theta = 2 * math.pi / slices
     delta_radii = 1/rings
@@ -131,13 +135,15 @@ def generate_xyzn(df, base_center=None):
     for i in range(0, len(df.index)):
         delta_x = df.at[i, 'x'] - base_center[0]
         delta_y = df.at[i, 'y'] - base_center[1]
-        delta_z = df.at[i, 'height'] + base_center[2]
-        df.at[i, 'n'] = [delta_x, delta_y, delta_z]
-
+        df.at[i, 'n'] = [delta_x, delta_y, 0]
     return df
 
 
-def create_partial_cyl(layer_df, layers=1, cyl_height=1.0, base_center=None, comp=None):
+def create_partial_cyl(layer_df,
+                       layers=1,
+                       cyl_height=1.0,
+                       base_center=None,
+                       comp=None):
 
     delta_height = (cyl_height - base_center[2])/layers
     height = delta_height/2 + base_center[2]
@@ -167,6 +173,7 @@ def create_cyl_wall(df, wall_thickness=None):
         wall_thickness = df['delta_radii'].max()
     outer_cyl_nodes = df.loc[df['radii'] == df['radii'].max()].copy()
     outer_cyl_nodes['radii'] = outer_cyl_nodes['radii'] + wall_thickness
+    outer_cyl_nodes['delta_radii'] = wall_thickness
     outer_cyl_nodes.comp = 'Wall'
     df = df.append(outer_cyl_nodes, ignore_index=True, sort=False)
     df.reset_index(inplace=True, drop=True)
@@ -280,7 +287,8 @@ def create_cyl_nodes(slices=1,
     df['lft_theta'] = df['theta'] + df['delta_theta'] / 2
     df['rht_theta'] = df['theta'] - df['delta_theta'] / 2
 
-    # df = create_cyl_wall(df, wall_thickness=wall_thickness)
+    if wall_thickness is not None:
+        df = create_cyl_wall(df, wall_thickness=wall_thickness)
 
     df['volume'] = 4 * df['delta_radii'] * df['radii'] * (df['lft_theta'] - df['rht_theta']) ** 2 ** .5 / 2
 
@@ -290,13 +298,17 @@ def create_cyl_nodes(slices=1,
 
     df = assign_neighbors(df)
 
+    df = classify_cylinder_nodes(df)
+
     df = df[['comp',
+             'class',
              'theta',
              'radii',
              'height',
              'x',
              'y',
              'z',
+             'n',
              'lft_nbr',
              'rht_nbr',
              'inr_nbr',
@@ -323,8 +335,12 @@ def assign_node_view_factor(df, cyl_view_factor):
     df['node_vf'] = df['node_vf'] * cyl_view_factor
     return df
 
-
-def create_node_fdm_constants(df, densities, specific_heats, thermal_conductivities, time_step):
+'''
+def create_node_fdm_constants(df,
+                              densities,
+                              specific_heats,
+                              thermal_conductivities,
+                              time_step):
 
     df['rho'] = df['comp'].map(densities)
     df['Cp'] = df['comp'].map(specific_heats)
@@ -353,3 +369,140 @@ def create_node_fdm_constants(df, densities, specific_heats, thermal_conductivit
     df['alpha'] = df['k'] / df['rho'] / df['Cp']
 
     return df
+'''
+
+
+def classify_cylinder_nodes(df):
+
+    node_classes = {1: 'Liquid Internal',
+                    2: 'Gas Internal',
+                    3: 'Liquid at Wall Boundary',
+                    4: 'Gas at Wall Boundary',
+                    5: 'Wall at Liquid Boundary',
+                    6: 'Wall at Gas Boundary',
+                    7: 'Wall External'}
+
+    max_fluid_radii = df['radii'].where(df['comp'] == 'Liquid').max()
+    min_wall_radii = df['radii'].where(df['comp'] == 'Wall').min()
+    max_liquid_height = df['height'].where(df['comp'] == 'Liquid').max()
+
+    def classify_node(height, radii):
+        # Case 1: Liquid Internal
+        if height <= max_liquid_height and radii < max_fluid_radii:
+            node_class = 1
+
+        # Case 2: Gas Internal
+        elif height > max_liquid_height and radii < max_fluid_radii:
+            node_class = 2
+
+        # Case 3: Liquid at Wall
+        elif height <= max_liquid_height and radii == max_fluid_radii:
+            node_class = 3
+
+        # Case 4: Gas at Wall
+        elif height > max_liquid_height and radii == max_fluid_radii:
+            node_class = 4
+
+        # Case 5: Wall at Liquid
+        elif height <= max_liquid_height and radii == min_wall_radii:
+            node_class = 5
+
+        # Case 6: Wall at Gas
+        elif height > max_liquid_height and radii == min_wall_radii:
+            node_class = 6
+
+        # Case 7: Wall External
+        else:
+            node_class = 7
+
+        return node_class
+
+    df['class'] = df.apply(
+        lambda row: classify_node(row['height'],
+                                  row['radii']),
+        axis=1
+    )
+
+    return df
+
+
+def create_node_fdm_constants(df,
+                              densities,
+                              specific_heats,
+                              thermal_conductivities,
+                              fluid_delta_radii,
+                              wall_thickness,
+                              time_step):
+
+    """
+    Unfinished
+    :param df:
+    :param densities:
+    :param specific_heats:
+    :param thermal_conductivities:
+    :param fluid_delta_radii:
+    :param wall_thickness:
+    :param time_step:
+    :return:
+    """
+
+    max_fluid_radii = df['radii'].where(df['comp'] == 'Liquid').max()
+    min_wall_radii = df['radii'].where(df['comp'] == 'Wall').min()
+    max_liquid_height = df['height'].where(df['comp'] == 'Liquid').max()
+
+    node_classes = {1: 'Liquid Internal',
+                    2: 'Gas Internal',
+                    3: 'Liquid at Wall Boundary',
+                    4: 'Gas at Wall Boundary',
+                    5: 'Wall at Liquid Boundary',
+                    6: 'Wall at Gas Boundary',
+                    7: 'Wall External'}
+
+    def case_1():
+        d1a = thermal_conductivities['Liquid'] * time_step / densities['Liquid'] / specific_heats['Liquid'] / fluid_delta_radii ** 2
+        d1b = d1a
+        d2 =
+        d3 = None
+
+    def case_2():
+        d1a = None
+        d1b = None
+        d2 = None
+        d3 = None
+
+    def case_3():
+        d1a = None
+        d1b = None
+        d2 = None
+        d3 = None
+
+    def case_4():
+        d1a = None
+        d1b = None
+        d2 = None
+        d3 = None
+
+    def case_5():
+        d1a = None
+        d1b = None
+        d2 = None
+        d3 = None
+
+    def case_6():
+        d1a = None
+        d1b = None
+        d2 = None
+        d3 = None
+
+    def case_7():
+        d1a = None
+        d1b = None
+        d2 = None
+        d3 = None
+
+
+
+
+    print(densities, '\n', specific_heats, '\n', thermal_conductivities)
+    quit()
+    return None

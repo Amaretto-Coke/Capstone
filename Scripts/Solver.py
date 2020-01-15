@@ -16,7 +16,6 @@ def update_node_temp(prop_df,
                      max_radii,
                      fire_temp,
                      air_temp):
-
     d1 = prop_df.loc[node]['d1']
     d2 = prop_df.iloc[node]['d2']
     d3 = prop_df.iloc[node]['d3']
@@ -32,7 +31,7 @@ def update_node_temp(prop_df,
 
     if node_radii == max_radii:
         if (0 < node_theta) & (node_theta < math.pi):
-            heat_flux = (node_vf * 5.67e-8 * (fire_temp**4 - tick_temp**4) +
+            heat_flux = (node_vf * 5.67e-8 * (fire_temp ** 4 - tick_temp ** 4) +
                          (air_temp - tick_temp) * 15
                          ) * delta_time
             heat_gen = heat_flux * otr_area / node_vol
@@ -117,10 +116,10 @@ if __name__ == '__main__':
 
         print('Importing and pre-processing...\n')
 
-        tank_od = inputs['TankID[m]'] + inputs['WallThickness[cm]']/100
+        tank_od = inputs['TankID[m]'] + inputs['WallThickness[cm]'] / 100
 
         vf = vf_plane_to_cyl2(s=inputs['FireDistanceFromTankCenter[m]'],
-                              r=tank_od/2,
+                              r=tank_od / 2,
                               l=inputs['TankHeight[m]'],
                               t=tank_od,
                               n=100)
@@ -137,7 +136,7 @@ if __name__ == '__main__':
                                        base_center=[0, 0, 0],
                                        space_out=inputs['space_out'],
                                        vol_factor=inputs['vol_factor'],
-                                       wall_thickness=inputs['WallThickness[cm]']/100)
+                                       wall_thickness=inputs['WallThickness[cm]'] / 100)
 
         geo_prop_df['c'] = geo_prop_df['comp'].apply(lambda cpnt: color_nodes_by_component(cpnt))
 
@@ -149,7 +148,7 @@ if __name__ == '__main__':
 
         geo_prop_df = create_node_fdm_constants(geo_prop_df, comp_rhos, comp_Cps, comp_ks, inputs['TimeStep[s]'])
 
-        time_steps = list(range(0, inputs['TimeIterations[#]']+1))
+        time_steps = list(range(0, inputs['TimeIterations[#]'] + 1))
         time_steps = [i * inputs['TimeStep[s]'] for i in time_steps]
         time_steps = pd.Series(time_steps)
 
@@ -169,7 +168,7 @@ if __name__ == '__main__':
                          'inr_temp', 'inr_nbr',
                          'otr_temp',
                          'lft_temp', 'lft_nbr',
-                         'rht_temp', 'rht_nbr' ]
+                         'rht_temp', 'rht_nbr']
 
         for col in debug_columns:
             temp_df[col] = np.nan
@@ -182,10 +181,10 @@ if __name__ == '__main__':
 
         print('Starting time iterations...')
 
-        total_time_steps = int(len(time_steps))-1
+        total_time_steps = int(len(time_steps)) - 1
 
         for t in time_steps[:-1]:
-            print('\rCurrently on timestep {0} of {1}.'.format(int(t/inputs['TimeStep[s]'])+1,
+            print('\rCurrently on timestep {0} of {1}.'.format(int(t / inputs['TimeStep[s]']) + 1,
                                                                total_time_steps),
                   end='', flush=True)
             for n in nodes:
