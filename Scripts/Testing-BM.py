@@ -21,18 +21,22 @@ def update_node_temp_pd(df, delta_time, tick, tock, h_values, local_temps, str_t
 
     df[tick_HG_col] = df[tick_HF_col] * df['otr_area'] / df['volume']
 
-    print('\n', len(df[tock_T_col]))
-    x = df['d1a'] * (df.loc[df['otr_nbr_1'], tick_T_col] + df.loc[df['otr_nbr_2'], tick_T_col])/2
-    print()
-    quit()
+    T_otr = (df.loc[df['otr_nbr_1'], tick_T_col] + df.loc[df['otr_nbr_2'], tick_T_col])/2
+    T_inr = df.loc[df['inr_nbr'], tick_T_col]
+    T_lft = df.loc[df['lft_nbr'], tick_T_col]
+    T_rht = df.loc[df['lft_nbr'], tick_T_col]
 
+    nbr_Ts = [T_otr, T_inr, T_lft, T_rht]
 
-    df[tock_T_col] = list(
-        df['d1a'] * (df.loc[df['otr_nbr_1'], tick_T_col] + df.loc[df['otr_nbr_2'], tick_T_col])/2
-    )
+    for T in nbr_Ts:
+        T.reset_index(inplace=True, drop=True)
 
-    # print(df[tick_T_col])
-    quit()
+    df[tock_T_col] = \
+        df['d1a'] * (T_otr - df[tick_T_col]) + \
+        df['d1b'] * (T_inr - df[tick_T_col]) + \
+        df['d2'] * (T_otr - T_inr) + \
+        df['d3'] * (T_rht - 2 * df[tick_T_col] - T_lft) + \
+        df[tick_HG_col] / df['rho'] / df['Cp']
 
 if __name__ == '__main__':
     try:
@@ -119,6 +123,8 @@ if __name__ == '__main__':
 
             total_time_steps = int(len(time_steps)) - 1
 
+        print(time_steps)
+
         for t in time_steps[:-1]:
             print('\rCurrently on timestep {0} of {1}.'.format(
                 int(t) + 1, total_time_steps),
@@ -135,6 +141,8 @@ if __name__ == '__main__':
 
         print('\nFinished iterations.\n')
 
+        # Call to broken graphics functions
+        '''
         print('Making graphics.\n')
 
         generate_time_gif(temp_df=node_df, prop_df=node_df, time_steps=time_steps)
@@ -151,12 +159,13 @@ if __name__ == '__main__':
                                  color_map='hsv')
 
         print('\nFinished making graphics.\n')
+        '''
 
         if export:
             print('Exporting results...\n')
             try:
                 export_results(dfs=[node_df],
-                               df_names=['node_temperatures'],
+                               df_names=['node_df'],
                                open_after=True,
                                index=True)
             except PermissionError:

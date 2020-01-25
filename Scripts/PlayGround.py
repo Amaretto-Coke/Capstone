@@ -15,3 +15,7 @@ x = df.loc[df['Z'], 'A']
 
 print(x)
 
+x.reset_index(drop=True, inplace=True)
+
+print(x)
+
