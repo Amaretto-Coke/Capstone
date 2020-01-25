@@ -8,23 +8,6 @@ from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.axisartist.axislines import SubplotZero
 
 
-def update_node_temp(prop_df,
-                     node_temp,
-                     node,
-                     fire_temp,
-                     air_temp,
-                     h_val):
-    node_theta = prop_df.loc[node]['theta']
-    node_vf = prop_df.loc[node]['node_vf']
-
-    heat_flux = (node_vf * 5.67e-8 * (fire_temp ** 4 - node_temp ** 4) -
-                 (node_temp - air_temp) * h_val
-                 )
-
-    temp_df.loc[(h_val, node_temp, node), ['Heat_Flux[W/m²]', 'theta']] = [heat_flux, node_theta]
-    return temp_df
-
-
 if __name__ == '__main__':
     pd.set_option('display.max_rows', 2000)
     # pd.set_option('display.max_columns', 2000)
@@ -75,7 +58,8 @@ if __name__ == '__main__':
     geo_prop_df = geo_prop_df[geo_prop_df['theta'] >= 0]
     geo_prop_df = geo_prop_df[geo_prop_df['theta'] <= math.pi]
 
-    if inputs['show_geo']:
+    #if inputs['show_geo']:
+    if True:
         print('Building node visual...\n')
         generate_3d_node_geometry(prop_df=geo_prop_df)
 

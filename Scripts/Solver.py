@@ -16,6 +16,7 @@ def update_node_temp(prop_df,
                      max_radii,
                      fire_temp,
                      air_temp):
+
     d1 = prop_df.loc[node]['d1']
     d2 = prop_df.iloc[node]['d2']
     d3 = prop_df.iloc[node]['d3']
