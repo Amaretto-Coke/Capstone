@@ -16,20 +16,17 @@ def update_node_temp_pd(func_df, delta_time, tick, tock, h_values, local_temps, 
     tick_HG_col = 'Heat Gen @ ' + str_times[tick]
 
     func_df[tick_HF_col] = \
-        ((func_df['node_vf'] * 5.67e-8 * (local_temps['fire_temp'] ** 4 - func_df[tick_T_col] ** 4) +
-         (local_temps['amb_temp'] - func_df[tick_T_col]) * h_values['tank_exterior'])) * delta_time
+        ((5.67e-8 * (local_temps['fire_temp'] ** 4 - func_df[tick_T_col] ** 4) +
+         (local_temps['amb_temp'] - func_df[tick_T_col]) * h_values['tank_exterior'])) * delta_time * func_df['node_vf']
 
     func_df[tick_HG_col] = func_df[tick_HF_col] * func_df['otr_area'] / func_df['volume']
 
-    T_otr = (func_df.loc[func_df['otr_nbr_1'], tick_T_col] + func_df.loc[func_df['otr_nbr_2'], tick_T_col])/2
-    T_inr = func_df.loc[func_df['inr_nbr'], tick_T_col]
-    T_lft = func_df.loc[func_df['lft_nbr'], tick_T_col]
-    T_rht = func_df.loc[func_df['lft_nbr'], tick_T_col]
-
-    nbr_Ts = [T_otr, T_inr, T_lft, T_rht]
-
-    for T in nbr_Ts:
-        T.reset_index(inplace=True, drop=True)
+    T_otr1 = func_df.loc[func_df['otr_nbr_1'], tick_T_col].to_numpy()
+    T_otr2 = func_df.loc[func_df['otr_nbr_2'], tick_T_col].to_numpy()
+    T_inr = func_df.loc[func_df['inr_nbr'], tick_T_col].to_numpy()
+    T_lft = func_df.loc[func_df['lft_nbr'], tick_T_col].to_numpy()
+    T_rht = func_df.loc[func_df['lft_nbr'], tick_T_col].to_numpy()
+    T_otr = (T_otr1 + T_otr2)/2
 
     func_df[tock_T_col] = \
         func_df['d1a'] * (T_otr - func_df[tick_T_col]) + \
@@ -44,7 +41,7 @@ def update_node_temp_pd(func_df, delta_time, tick, tock, h_values, local_temps, 
 if __name__ == '__main__':
     try:
         if True:
-            # pd.set_option('display.max_rows', 2000)
+            pd.set_option('display.max_rows', 2000)
             pd.set_option('display.max_columns', 2000)
             # pd.set_option('display.width', 2000)
 
