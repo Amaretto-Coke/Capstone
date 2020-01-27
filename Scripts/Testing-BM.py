@@ -35,7 +35,7 @@ def update_node_temp_pd(func_df, delta_time, tick, tock, h_values, local_temps, 
         func_df['d1a'] * (T_otr - func_df[tick_T_col]) + \
         func_df['d1b'] * (T_inr - func_df[tick_T_col]) + \
         func_df['d2'] * (T_otr - T_inr) + \
-        func_df['d3'] * (T_rht - 2 * func_df[tick_T_col] - T_lft) + \
+        func_df['d3'] * (T_rht - 2 * func_df[tick_T_col] + T_lft) + \
         func_df[tick_HG_col] / func_df['rho'] / func_df['Cp'] + \
         func_df[tick_T_col]
 
@@ -117,10 +117,7 @@ if __name__ == '__main__':
             str_time_steps = ["t={:0.2f}s".format(i * inputs['TimeStep[s]']) for i in time_steps]
 
             # Creates numerous columns in the dataframe, one for every time iteration
-            node_df = node_df.assign(**{'T @ ' + i: loc_temps['amb_temp'] for i in str_time_steps})
-            node_df = node_df.assign(**{'Heat Flux @ ' + i: np.float64(0) for i in str_time_steps})
-            node_df = node_df.assign(**{'Heat Gen @ ' + i: np.float64(0) for i in str_time_steps})
-            col_list = node_df.columns.to_list()
+            node_df = node_df.assign(**{'T @ ' + str_time_steps[0]: loc_temps['amb_temp']})
 
             print('Starting time iterations...')
 
