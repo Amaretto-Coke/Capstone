@@ -88,8 +88,7 @@ if __name__ == '__main__':
 
             node_df['c'] = node_df['comp'].apply(lambda cpnt: color_nodes_by_component(cpnt))
 
-            # if inputs['show_geo']:
-            if False:
+            if inputs['show_geo']:
                 print('Building node visual...\n')
                 generate_3d_node_geometry(prop_df=node_df)
 
