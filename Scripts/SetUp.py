@@ -86,7 +86,6 @@ def normalize_vector(vector):
 
 def create_layer_nodes(slices=1,
                        rings=1,
-                       space_out=False,
                        vol_factor=1.2,
                        cyl_diam=np.float64(1.0)):
 
@@ -100,10 +99,9 @@ def create_layer_nodes(slices=1,
 
     while radii < 1:
         e_vol = ((radii+delta_radii/2)**2 - (radii-delta_radii/2)**2) * delta_theta/2
-        if space_out:
-            while e_vol > vol_limit:
-                delta_theta /= 2
-                e_vol = ((radii + delta_radii / 2) ** 2 - (radii - delta_radii / 2) ** 2) * delta_theta / 2
+        while e_vol > vol_limit:
+            delta_theta /= 2
+            e_vol = ((radii + delta_radii / 2) ** 2 - (radii - delta_radii / 2) ** 2) * delta_theta / 2
         theta = delta_theta/2
         while theta < 2 * math.pi:
             lev_nodes.append([theta, radii, delta_theta])
@@ -252,7 +250,6 @@ def create_cyl_nodes(slices=1,
                      cyl_height=1.0,
                      liq_level=0.5,
                      base_center=None,
-                     space_out=False,
                      vol_factor=1.0,
                      wall_thickness=None):
 
@@ -264,7 +261,6 @@ def create_cyl_nodes(slices=1,
 
     layer_df = create_layer_nodes(slices=slices,
                                   rings=rings,
-                                  space_out=space_out,
                                   vol_factor=vol_factor,
                                   cyl_diam=cyl_diam)
 
@@ -296,7 +292,6 @@ def create_cyl_nodes(slices=1,
         del liq_df
 
     df['otr_area'] = (df['radii'] + df['delta_radii']/2) * df['delta_theta'] * df['delta_height']
-
     df['lft_theta'] = df['theta'] + df['delta_theta'] / 2
     df['rht_theta'] = df['theta'] - df['delta_theta'] / 2
 
@@ -349,7 +344,7 @@ def assign_node_view_factor(df, cyl_view_factor):
     df['node_vf'] = (np.vectorize(math.cos)(df['rht_theta']) -
                      np.vectorize(math.cos)(df['lft_theta']))
     df['node_vf'] = df['node_vf'] * (df['radii'] == df['radii'].max())
-    df['node_vf'] = df['node_vf'] * ((df['theta'] > 0) * (df['theta'] < np.pi))
+    df['node_vf'] = df['node_vf'] * ((df['theta'] > 0) & (df['theta'] < np.pi))
     df['node_vf'] = df['node_vf'].apply(lambda x: abs(x))
     df['node_vf'] = df['node_vf'] * cyl_view_factor
 

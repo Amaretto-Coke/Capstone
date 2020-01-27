@@ -83,7 +83,6 @@ if __name__ == '__main__':
                                        cyl_height=inputs['TankHeight[m]'],
                                        liq_level=inputs['FluidLevel[m]'],
                                        base_center=[0, 0, 0],
-                                       space_out=inputs['space_out'],
                                        vol_factor=inputs['vol_factor'],
                                        wall_thickness=inputs['WallThickness[cm]'] / 100)
 
