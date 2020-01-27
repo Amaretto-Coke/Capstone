@@ -119,6 +119,11 @@ if __name__ == '__main__':
             # Creates numerous columns in the dataframe, one for every time iteration
             node_df = node_df.assign(**{'T @ ' + str_time_steps[0]: loc_temps['amb_temp']})
 
+            '''
+            {'T @ ' + i: loc_temps['amb_temp'] for i in str_time_steps}
+            {'Heat Flux @ ' + i: np.float64(0) for i in str_time_steps}
+            {'Heat Gen @ ' + i: np.float64(0) for i in str_time_steps}
+            '''
 
             print('Starting time iterations...')
 
