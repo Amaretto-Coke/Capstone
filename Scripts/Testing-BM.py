@@ -119,6 +119,7 @@ if __name__ == '__main__':
             # Creates numerous columns in the dataframe, one for every time iteration
             node_df = node_df.assign(**{'T @ ' + str_time_steps[0]: loc_temps['amb_temp']})
 
+
             print('Starting time iterations...')
 
             total_time_steps = int(len(time_steps)) - 1
