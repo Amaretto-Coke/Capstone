@@ -9,34 +9,37 @@ from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.axisartist.axislines import SubplotZero
 
 
-def update_node_temp_pd(df, delta_time, tick, tock, h_values, local_temps, str_times):
+def update_node_temp_pd(func_df, delta_time, tick, tock, h_values, local_temps, str_times):
     tick_T_col = 'T @ ' + str_times[tick]
     tock_T_col = 'T @ ' + str_times[tock]
     tick_HF_col = 'Heat Flux @ ' + str_times[tick]
     tick_HG_col = 'Heat Gen @ ' + str_times[tick]
 
-    df[tick_HF_col] = \
-        ((df['node_vf'] * 5.67e-8 * (local_temps['fire_temp'] ** 4 - df[tick_T_col] ** 4) +
-         (local_temps['amb_temp'] - df[tick_T_col]) * h_values['tank_exterior'])) * delta_time
+    func_df[tick_HF_col] = \
+        ((func_df['node_vf'] * 5.67e-8 * (local_temps['fire_temp'] ** 4 - func_df[tick_T_col] ** 4) +
+         (local_temps['amb_temp'] - func_df[tick_T_col]) * h_values['tank_exterior'])) * delta_time
 
-    df[tick_HG_col] = df[tick_HF_col] * df['otr_area'] / df['volume']
+    func_df[tick_HG_col] = func_df[tick_HF_col] * func_df['otr_area'] / func_df['volume']
 
-    T_otr = (df.loc[df['otr_nbr_1'], tick_T_col] + df.loc[df['otr_nbr_2'], tick_T_col])/2
-    T_inr = df.loc[df['inr_nbr'], tick_T_col]
-    T_lft = df.loc[df['lft_nbr'], tick_T_col]
-    T_rht = df.loc[df['lft_nbr'], tick_T_col]
+    T_otr = (func_df.loc[func_df['otr_nbr_1'], tick_T_col] + func_df.loc[func_df['otr_nbr_2'], tick_T_col])/2
+    T_inr = func_df.loc[func_df['inr_nbr'], tick_T_col]
+    T_lft = func_df.loc[func_df['lft_nbr'], tick_T_col]
+    T_rht = func_df.loc[func_df['lft_nbr'], tick_T_col]
 
     nbr_Ts = [T_otr, T_inr, T_lft, T_rht]
 
     for T in nbr_Ts:
         T.reset_index(inplace=True, drop=True)
 
-    df[tock_T_col] = \
-        df['d1a'] * (T_otr - df[tick_T_col]) + \
-        df['d1b'] * (T_inr - df[tick_T_col]) + \
-        df['d2'] * (T_otr - T_inr) + \
-        df['d3'] * (T_rht - 2 * df[tick_T_col] - T_lft) + \
-        df[tick_HG_col] / df['rho'] / df['Cp']
+    func_df[tock_T_col] = \
+        func_df['d1a'] * (T_otr - func_df[tick_T_col]) + \
+        func_df['d1b'] * (T_inr - func_df[tick_T_col]) + \
+        func_df['d2'] * (T_otr - T_inr) + \
+        func_df['d3'] * (T_rht - 2 * func_df[tick_T_col] - T_lft) + \
+        func_df[tick_HG_col] / func_df['rho'] / func_df['Cp'] + \
+        func_df[tick_T_col]
+
+    return func_df
 
 if __name__ == '__main__':
     try:
@@ -123,14 +126,12 @@ if __name__ == '__main__':
 
             total_time_steps = int(len(time_steps)) - 1
 
-        print(time_steps)
-
         for t in time_steps[:-1]:
             print('\rCurrently on timestep {0} of {1}.'.format(
                 int(t) + 1, total_time_steps),
                   end='', flush=True)
-            update_node_temp_pd(
-                df=node_df,
+            node_df = update_node_temp_pd(
+                func_df=node_df,
                 delta_time=inputs['TimeStep[s]'],
                 tick=t,
                 tock=t+1,

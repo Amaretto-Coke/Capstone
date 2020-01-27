@@ -349,9 +349,10 @@ def assign_node_view_factor(df, cyl_view_factor):
     df['node_vf'] = (np.vectorize(math.cos)(df['rht_theta']) -
                      np.vectorize(math.cos)(df['lft_theta']))
     df['node_vf'] = df['node_vf'] * (df['radii'] == df['radii'].max())
-    df['node_vf'] = df['node_vf'] * ((df['theta'] > 0) & (df['theta'] < math.pi))
+    df['node_vf'] = df['node_vf'] * ((df['theta'] > 0) * (df['theta'] < np.pi))
     df['node_vf'] = df['node_vf'].apply(lambda x: abs(x))
     df['node_vf'] = df['node_vf'] * cyl_view_factor
+
     return df
 
 
