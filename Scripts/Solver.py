@@ -8,126 +8,70 @@ from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.axisartist.axislines import SubplotZero
 
 
-def update_node_temp(prop_df,
-                     temp_df,
-                     delta_time,
-                     tick,
-                     node,
-                     max_radii,
-                     fire_temp,
-                     air_temp):
+def update_node_temp_pd(func_df, delta_time, tick, tock, h_values, local_temps, str_times):
+    tick_T_col = 'T @ ' + str_times[tick]
+    tock_T_col = 'T @ ' + str_times[tock]
+    tick_HF_col = 'Heat Flux @ ' + str_times[tick]
+    tick_HG_col = 'Heat Gen @ ' + str_times[tick]
 
-    d1 = prop_df.loc[node]['d1']
-    d2 = prop_df.iloc[node]['d2']
-    d3 = prop_df.iloc[node]['d3']
-    k = prop_df.iloc[node]['k']
-    node_radii = prop_df.iloc[node]['radii']
-    node_theta = prop_df.iloc[node]['theta']
-    node_vf = prop_df.iloc[node]['node_vf']
-    node_vol = prop_df.iloc[node]['volume']
-    otr_area = prop_df.iloc[node]['otr_area']
-    alpha = prop_df.iloc[node]['alpha']
-    tock = tick + delta_time
-    tick_temp = temp_df.loc[(tick, node)]['Temp[K]']
+    func_df[tick_HF_col] = \
+        ((5.67e-8 * (local_temps['fire_temp'] ** 4 - func_df[tick_T_col] ** 4) +
+         (local_temps['amb_temp'] - func_df[tick_T_col]) * h_values['tank_exterior'])) * delta_time * func_df['node_vf']
 
-    if node_radii == max_radii:
-        if (0 < node_theta) & (node_theta < math.pi):
-            heat_flux = (node_vf * 5.67e-8 * (fire_temp ** 4 - tick_temp ** 4) +
-                         (air_temp - tick_temp) * 15
-                         ) * delta_time
-            heat_gen = heat_flux * otr_area / node_vol
-        else:
-            heat_flux = (air_temp - tick_temp) * 15 * delta_time  # using an h-value of 15
-            heat_gen = heat_flux * otr_area / node_vol
-    else:
-        heat_flux = 0
-        heat_gen = 0
+    func_df[tick_HG_col] = func_df[tick_HF_col] * func_df['otr_area'] / func_df['volume']
 
-    inr_node = prop_df.iloc[node]['inr_nbr']
+    T_otr1 = func_df.loc[func_df['otr_nbr_1'], tick_T_col].to_numpy()
+    T_otr2 = func_df.loc[func_df['otr_nbr_2'], tick_T_col].to_numpy()
+    T_inr = func_df.loc[func_df['inr_nbr'], tick_T_col].to_numpy()
+    T_lft = func_df.loc[func_df['lft_nbr'], tick_T_col].to_numpy()
+    T_rht = func_df.loc[func_df['lft_nbr'], tick_T_col].to_numpy()
+    T_otr = (T_otr1 + T_otr2)/2
 
-    if inr_node is np.nan:
-        inr_temp = tick_temp
-    else:
-        inr_temp = temp_df.loc[(tick, inr_node)]['Temp[K]']
+    func_df[tock_T_col] = \
+        func_df['d1a'] * (T_otr - func_df[tick_T_col]) + \
+        func_df['d1b'] * (T_inr - func_df[tick_T_col]) + \
+        func_df['d2'] * (T_otr - T_inr) + \
+        func_df['d3'] * (T_rht - 2 * func_df[tick_T_col] + T_lft) + \
+        func_df[tick_HG_col] / func_df['rho'] / func_df['Cp'] + \
+        func_df[tick_T_col]
 
-    lft_node = prop_df.iloc[node]['lft_nbr']
-    lft_temp = temp_df.loc[(tick, lft_node)]['Temp[K]']
-
-    rht_node = prop_df.iloc[node]['rht_nbr']
-    rht_temp = temp_df.loc[(tick, rht_node)]['Temp[K]']
-
-    otr_nodes = prop_df.iloc[node]['otr_nbr']
-
-    if otr_nodes != list():
-        otr_temp = 0
-        for o_n in otr_nodes:
-            otr_temp += temp_df.loc[(tick, o_n)]['Temp[K]']
-        otr_temp /= len(otr_nodes)
-    else:
-        otr_temp = tick_temp
-
-    tock_temp = (
-            d1 * (inr_temp - 2 * tick_temp + otr_temp) +
-            d2 * (inr_temp - otr_temp) +
-            d3 * (rht_temp - 2 * tick_temp + lft_temp) +
-            alpha * heat_gen / k +
-            tick_temp
-    )
-
-    temp_df.loc[(tock, node)]['Temp[K]'] = tock_temp
-    temp_df.loc[(tick, node)]['d1', 'd2', 'd3', 'k',
-                              'alpha', 'tock_temp',
-                              'heat_gen', 'heat_flux',
-                              'otr_area',
-                              'inr_temp', 'inr_nbr',
-                              'otr_temp',
-                              'lft_temp', 'lft_nbr',
-                              'rht_temp', 'rht_nbr'] = [d1, d2, d3, k,
-                                                        alpha, tock_temp,
-                                                        heat_gen, heat_flux,
-                                                        otr_area,
-                                                        inr_temp, inr_node,
-                                                        otr_temp,
-                                                        lft_temp, lft_node,
-                                                        rht_temp, rht_node]
-
-    return temp_df
-
+    return func_df
 
 if __name__ == '__main__':
     try:
-        pd.set_option('display.max_rows', 2000)
-        pd.set_option('display.max_columns', 2000)
-        pd.set_option('display.width', 2000)
+        if True:
+            pd.set_option('display.max_rows', 2000)
+            pd.set_option('display.max_columns', 2000)
+            # pd.set_option('display.width', 2000)
 
-        inputs = import_cases_and_fluids()
-        export = True
+            inputs = import_cases_and_fluids()
+            export = True
 
-        comp_Cps = {'Liquid': inputs['Liquid_Cp[J/gK]'],
-                    'Gas': inputs['Air_Cp[J/gK]'],
-                    'Wall': inputs['Wall_Cp[J/gK]']}
+            comp_Cps = {'Liquid': inputs['Liquid_Cp[J/kgK]'],
+                        'Gas': inputs['Air_Cp[J/kgK]'],
+                        'Wall': inputs['Wall_Cp[J/kgK]']}
 
-        comp_ks = {'Liquid': inputs['Liquid_k[W/mK]'],
-                   'Gas': inputs['Air_k[W/mK]'],
-                   'Wall': inputs['Wall_k[W/mK]']}
+            comp_ks = {'Liquid': inputs['Liquid_k[W/mK]'],
+                       'Gas': inputs['Air_k[W/mK]'],
+                       'Wall': inputs['Wall_k[W/mK]']}
 
-        comp_rhos = {'Liquid': inputs['Liquid_rho[kg/m3]'],
-                     'Gas': inputs['Air_rho[kg/m3]'],
-                     'Wall': inputs['Wall_rho[kg/m3]']}
+            comp_rhos = {'Liquid': inputs['Liquid_rho[kg/m3]'],
+                         'Gas': inputs['Air_rho[kg/m3]'],
+                         'Wall': inputs['Wall_rho[kg/m3]']}
 
-        print('Importing and pre-processing...\n')
+            print('Importing and pre-processing...\n')
 
-        tank_od = inputs['TankID[m]'] + inputs['WallThickness[cm]'] / 100
+            tank_od = inputs['TankID[m]'] + inputs['WallThickness[cm]'] / 100
 
-        vf = vf_plane_to_cyl2(s=inputs['FireDistanceFromTankCenter[m]'],
-                              r=tank_od / 2,
-                              l=inputs['TankHeight[m]'],
-                              t=tank_od,
-                              n=100)
+            vf = vf_plane_to_cyl2(s=inputs['FireDistanceFromTankCenter[m]'],
+                                  r=tank_od / 2,
+                                  l=inputs['TankHeight[m]'],
+                                  t=tank_od,
+                                  n=100)
 
-        print('Creating cylinder...\n')
+            print('Creating cylinder...\n')
 
-        geo_prop_df = create_cyl_nodes(rings=inputs['rings'],
+            node_df = create_cyl_nodes(rings=inputs['rings'],
                                        slices=inputs['slices'],
                                        gas_layers=inputs['gas_layers'],
                                        liq_layers=inputs['liq_layers'],
@@ -135,79 +79,74 @@ if __name__ == '__main__':
                                        cyl_height=inputs['TankHeight[m]'],
                                        liq_level=inputs['FluidLevel[m]'],
                                        base_center=[0, 0, 0],
-                                       space_out=inputs['space_out'],
                                        vol_factor=inputs['vol_factor'],
                                        wall_thickness=inputs['WallThickness[cm]'] / 100)
 
-        geo_prop_df['c'] = geo_prop_df['comp'].apply(lambda cpnt: color_nodes_by_component(cpnt))
+            node_df['c'] = node_df['comp'].apply(lambda cpnt: color_nodes_by_component(cpnt))
 
-        if inputs['show_geo']:
-            print('Building node visual...\n')
-            generate_3d_node_geometry(prop_df=geo_prop_df)
+            if inputs['show_geo']:
+                print('Building node visual...\n')
+                generate_3d_node_geometry(prop_df=node_df)
 
-        geo_prop_df = assign_node_view_factor(df=geo_prop_df, cyl_view_factor=vf)
+            node_df = assign_node_view_factor(df=node_df, cyl_view_factor=vf)
 
-        geo_prop_df = create_node_fdm_constants(geo_prop_df, comp_rhos, comp_Cps, comp_ks, inputs['TimeStep[s]'])
+            node_df = create_node_fdm_constants(
+                df=node_df,
+                densities=comp_rhos,
+                specific_heats=comp_Cps,
+                thermal_conductivities=comp_ks,
+                delta_time=inputs['TimeStep[s]']
+            )
 
-        time_steps = list(range(0, inputs['TimeIterations[#]'] + 1))
-        time_steps = [i * inputs['TimeStep[s]'] for i in time_steps]
-        time_steps = pd.Series(time_steps)
+            nodes = list(node_df.index)
+            otr_node_radii = node_df['radii'].max()
 
-        nodes = list(geo_prop_df.index)
+            loc_temps = {}
+            loc_temps.update({'fire_temp': np.float64(inputs['FireTemp[C]'] + 273.15)})
+            loc_temps.update({'amb_temp': np.float64(inputs['Ambient/InitialTemp[C]'] + 273.15)})
 
-        idx = pd.MultiIndex.from_product([time_steps, nodes],
-                                         names=['TimeStep', 'NodeIdx'])
+            h_vals = {'tank_exterior': 15, 'tank_interior': 15}
 
-        temp_df = pd.DataFrame(index=idx, columns=['Temp[K]'])
+            time_steps = list(range(0, inputs['TimeIterations[#]'] + 1))
+            str_time_steps = ["t={:0.2f}s".format(i * inputs['TimeStep[s]']) for i in time_steps]
 
-        temp_df['Temp[K]'] = inputs['Ambient/InitialTemp[C]'] + 273.15
+            # Creates numerous columns in the dataframe, one for every time iteration
+            node_df = node_df.assign(**{'T @ ' + str_time_steps[0]: loc_temps['amb_temp']})
 
-        debug_columns = ['d1', 'd2', 'd3', 'k',
-                         'alpha', 'tock_temp',
-                         'heat_gen', 'heat_flux',
-                         'otr_area',
-                         'inr_temp', 'inr_nbr',
-                         'otr_temp',
-                         'lft_temp', 'lft_nbr',
-                         'rht_temp', 'rht_nbr']
+            '''
+            {'T @ ' + i: loc_temps['amb_temp'] for i in str_time_steps}
+            {'Heat Flux @ ' + i: np.float64(0) for i in str_time_steps}
+            {'Heat Gen @ ' + i: np.float64(0) for i in str_time_steps}
+            '''
 
-        for col in debug_columns:
-            temp_df[col] = np.nan
+            print('Starting time iterations...')
 
-        del debug_columns, idx, vf, tank_od, comp_ks, comp_Cps, comp_rhos
-
-        otr_node_radii = geo_prop_df['radii'].max()
-        fire_temp = inputs['FireTemp[C]'] + 273.15
-        amb_temp = inputs['Ambient/InitialTemp[C]'] + 273.15
-
-        print('Starting time iterations...')
-
-        total_time_steps = int(len(time_steps)) - 1
+            total_time_steps = int(len(time_steps)) - 1
 
         for t in time_steps[:-1]:
-            print('\rCurrently on timestep {0} of {1}.'.format(int(t / inputs['TimeStep[s]']) + 1,
-                                                               total_time_steps),
+            print('\rCurrently on timestep {0} of {1}.'.format(
+                int(t) + 1, total_time_steps),
                   end='', flush=True)
-            for n in nodes:
-                temp_df = update_node_temp(prop_df=geo_prop_df,
-                                           temp_df=temp_df,
-                                           delta_time=inputs['TimeStep[s]'],
-                                           tick=t,
-                                           node=n,
-                                           max_radii=otr_node_radii,
-                                           fire_temp=fire_temp,
-                                           air_temp=amb_temp)
-
-                # temp_df = update_node_temp_attempt2(temp_df)
+            node_df = update_node_temp_pd(
+                func_df=node_df,
+                delta_time=inputs['TimeStep[s]'],
+                tick=t,
+                tock=t+1,
+                h_values=h_vals,
+                local_temps=loc_temps,
+                str_times=str_time_steps
+            )
 
         print('\nFinished iterations.\n')
 
+        # Call to broken graphics functions
+        '''
         print('Making graphics.\n')
 
-        generate_time_gif(temp_df=temp_df, prop_df=geo_prop_df, time_steps=time_steps)
+        generate_time_gif(temp_df=node_df, prop_df=node_df, time_steps=time_steps)
 
-        generate_boundary_graphs(temp_df=temp_df,
-                                 prop_df=geo_prop_df,
+        generate_boundary_graphs(temp_df=node_df,
+                                 prop_df=node_df,
                                  time_steps=time_steps,
                                  features=['heat_flux',
                                            'tock_temp',
@@ -218,12 +157,13 @@ if __name__ == '__main__':
                                  color_map='hsv')
 
         print('\nFinished making graphics.\n')
+        '''
 
         if export:
             print('Exporting results...\n')
             try:
-                export_results(dfs=[geo_prop_df, temp_df],
-                               df_names=['node_properties', 'node_temperatures'],
+                export_results(dfs=[node_df],
+                               df_names=['node_df'],
                                open_after=True,
                                index=True)
             except PermissionError:
@@ -236,9 +176,3 @@ if __name__ == '__main__':
     finally:
         print("Press Enter to continue ...")
         input()
-
-
-
-
-
-
