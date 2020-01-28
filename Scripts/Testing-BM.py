@@ -1,6 +1,5 @@
 import sys
 import traceback
-import time
 from SetUp import *
 from Graphics import *
 from PostOffice import *
@@ -48,9 +47,9 @@ if __name__ == '__main__':
             inputs = import_cases_and_fluids()
             export = True
 
-            comp_Cps = {'Liquid': inputs['Liquid_Cp[J/gK]'],
-                        'Gas': inputs['Air_Cp[J/gK]'],
-                        'Wall': inputs['Wall_Cp[J/gK]']}
+            comp_Cps = {'Liquid': inputs['Liquid_Cp[J/kgK]'],
+                        'Gas': inputs['Air_Cp[J/kgK]'],
+                        'Wall': inputs['Wall_Cp[J/kgK]']}
 
             comp_ks = {'Liquid': inputs['Liquid_k[W/mK]'],
                        'Gas': inputs['Air_k[W/mK]'],
