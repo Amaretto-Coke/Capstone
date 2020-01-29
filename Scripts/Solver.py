@@ -1,4 +1,5 @@
 import sys
+import time
 import traceback
 from SetUp import *
 from Graphics import *
