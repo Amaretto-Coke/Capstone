@@ -17,7 +17,8 @@ def update_node_temp_pd(func_df, delta_time, tick, tock, h_values, local_temps, 
 
     func_df[tick_HF_col] = \
         ((5.67e-8 * (local_temps['fire_temp'] ** 4 - func_df[tick_T_col] ** 4) +
-         (local_temps['amb_temp'] - func_df[tick_T_col]) * h_values['tank_exterior'])) * delta_time * func_df['node_vf']
+         (local_temps['amb_temp'] - func_df[tick_T_col]) * h_values['tank_exterior'])
+        ) * delta_time * func_df['node_vf']
 
     func_df[tick_HG_col] = func_df[tick_HF_col] * func_df['otr_area'] / func_df['volume']
 
@@ -25,7 +26,7 @@ def update_node_temp_pd(func_df, delta_time, tick, tock, h_values, local_temps, 
     T_otr2 = func_df.loc[func_df['otr_nbr_2'], tick_T_col].to_numpy()
     T_inr = func_df.loc[func_df['inr_nbr'], tick_T_col].to_numpy()
     T_lft = func_df.loc[func_df['lft_nbr'], tick_T_col].to_numpy()
-    T_rht = func_df.loc[func_df['lft_nbr'], tick_T_col].to_numpy()
+    T_rht = func_df.loc[func_df['rht_nbr'], tick_T_col].to_numpy()
     T_otr = (T_otr1 + T_otr2)/2
 
     func_df[tock_T_col] = \
@@ -139,26 +140,6 @@ if __name__ == '__main__':
             )
 
         print('\nFinished iterations.\n')
-
-        # Call to broken graphics functions
-        '''
-        print('Making graphics.\n')
-
-        generate_time_gif(temp_df=node_df, prop_df=node_df, time_steps=time_steps)
-
-        generate_boundary_graphs(temp_df=node_df,
-                                 prop_df=node_df,
-                                 time_steps=time_steps,
-                                 features=['heat_flux',
-                                           'tock_temp',
-                                           'heat_gen'],
-                                 labels=['Heat Flux\n[W/m²]',
-                                         'Node\nTemperature\n[K]',
-                                         'Heat\nGeneration\n[W/m³]'],
-                                 color_map='hsv')
-
-        print('\nFinished making graphics.\n')
-        '''
 
         if export:
             print('Exporting results...\n')

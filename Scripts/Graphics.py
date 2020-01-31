@@ -2,11 +2,13 @@ import os
 import math
 import imageio
 import numpy as np
+import pandas as pd
 import seaborn as sns
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.ticker import FormatStrFormatter
 from mpl_toolkits.axisartist.axislines import SubplotZero
 
 
@@ -163,6 +165,107 @@ def generate_time_gif(temp_df, prop_df, time_steps):
     for still in stills:
         writer.append_data(imageio.imread(still))
     writer.close()
+
+
+def make_cylinder_graphic(node_df, str_time_steps, inputs):
+    times = []
+    stills = []
+    times = ['T @ ' + i for i in str_time_steps]
+    timesteps = list(np.arange(0, (inputs['TimeIterations[#]'] + 1)))
+
+    for n, i in enumerate(times):
+        max_temp = node_df[i].max()
+        min_temp = node_df[i].min()
+        normalize = colors.Normalize(vmin=min_temp, vmax=max_temp)
+
+        fig = plt.figure()
+        ax = plt.gca()
+        ax.set_aspect('equal')
+        heatmap = ax.tricontourf(node_df['x'],
+                                 node_df['y'],
+                                 node_df[i],
+                                 cmap=cm.viridis,
+                                 norm=normalize,
+                                 alpha=0.9)
+        plt.axis('off')
+        cbaxes = fig.add_axes([0.02, 0.1, 0.03, 0.8])  # This is the position for the colorbar
+        fig.colorbar(heatmap, cax=cbaxes, format='%.1f')
+
+        new_axis = fig.add_axes(ax.get_position(),
+                                projection='polar',
+                                frameon=False,
+                                rlabel_position=90)
+
+        new_axis.set_theta_zero_location("S")
+        new_axis.yaxis.grid(color='w', linewidth=0.75, alpha=0.2)
+        new_axis.xaxis.grid(color='w', linewidth=0.75, alpha=0.2)
+        radii_ticks = np.round(np.unique(node_df['radii'].values), 1)
+        new_axis.set_rticks(radii_ticks)
+        new_axis.set_title('Temperature After {0}s [K]'.format("{:2.2f}".format(timesteps[n] * inputs['TimeStep[s]'])))
+
+        filename = os.path.dirname(os.getcwd()) + r'/tmp/3d_Temp_Step' + str(timesteps[n]) + '.png'
+        stills.append(filename)
+        plt.savefig(filename, dpi=96)
+        plt.close(fig)
+
+        print('\rCreating image {0} of {1}.'.format(
+            int(n) + 1, len(times)),
+            end='', flush=True)
+
+    fps = len(timesteps) / 60
+
+    print('\nCreating gif file...')
+    gif_path = os.path.dirname(os.getcwd()) + r'/Output/TimeGraph.gif'
+    with imageio.get_writer(gif_path, mode='I', duration=fps) as writer:
+        for still in stills:
+            image = imageio.imread(still)
+            writer.append_data(image)
+
+    print('\rCreating mp4 file...')
+    vid_path = os.path.dirname(os.getcwd()) + r'/Output/TimeGraph.mp4'
+    writer = imageio.get_writer(vid_path, fps=fps, macro_block_size=1)
+    for still in stills:
+        writer.append_data(imageio.imread(still))
+    writer.close()
+
+
+def outer_node_graph(node_df, time_steps, stop, str_time_steps):
+    times = ['T @ ' + i for i in str_time_steps]
+    temperature_df = node_df[['radii', 'theta']]
+
+    for n, i in enumerate(times):
+        temperature_df = pd.concat([temperature_df, node_df[i]], axis=1)
+
+    # temperature_df = temperature_df[temperature_df.radii != temperature_df.radii.max()]
+    outsidetemp = temperature_df[temperature_df.radii == temperature_df.radii.max()]
+    temperature = outsidetemp.iloc[:, 2:]
+
+    # setup the normalization and the colormap
+    normalize = colors.Normalize(vmin=time_steps[0], vmax=time_steps[stop])
+    colormap = cm.viridis
+    fig = plt.figure()
+    ax = plt.gca()
+
+    for i, k in enumerate(temperature.iloc[0:, :stop]):
+        plt.plot(outsidetemp.theta * (180 / np.pi), temperature[k], color=colormap(normalize(i)))
+
+    # setup the colorbar and the figure
+    scalarmappaple = cm.ScalarMappable(norm=normalize, cmap=colormap)
+    scalarmappaple.set_array(time_steps)
+    plt.colorbar(scalarmappaple)
+    plt.xticks([0, 90, 180, 270, 360])
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+    plt.xlabel("Theta (Degrees)")
+    plt.ylabel("Temperature (K)")
+    plt.title('Outer Node Temperature vs Theta for Different Time Steps')
+
+    plt.show()
+
+
+# make_cylinder_graphic(node_df,str_time_steps,inputs)
+# outer_node_graph(node_df, time_steps, 5, str_time_steps)
+
+
 
 
 
