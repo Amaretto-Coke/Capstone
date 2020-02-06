@@ -122,9 +122,11 @@ if __name__ == '__main__':
             {'Heat Gen @ ' + i: np.float64(0) for i in str_time_steps}
             '''
 
-            print('Starting time iterations...')
+        generate_3d_node_geometry(node_df)
 
-            total_time_steps = int(len(time_steps)) - 1
+        print('Starting time iterations...')
+
+        total_time_steps = int(len(time_steps)) - 1
 
         meter_time = False
         startTime = datetime.now()

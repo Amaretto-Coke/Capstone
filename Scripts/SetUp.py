@@ -205,7 +205,10 @@ def assign_neighbors(df):
         df.at[node, 'rht_nbr'] = nbr
 
         # finding the inner neighbor
-        my_df1 = df[df['radii'] < df.loc[node]['radii']]
+        my_df1 = df[
+            (df['radii'] < df.loc[node]['radii']) &
+            (df['height'] == df.loc[node]['height'])
+        ]
         if len(my_df1) != 0:
             my_df1 = my_df1[my_df1['radii'] == my_df1['radii'].max()]
             my_df1 = my_df1[my_df1['z'] == df.loc[node]['z']]
@@ -251,7 +254,8 @@ def create_cyl_nodes(slices=1,
                      liq_level=0.5,
                      base_center=None,
                      vol_factor=1.0,
-                     wall_thickness=None):
+                     wall_thickness=None,
+                     remove_gas_nodes=True):
 
     if base_center is None:
         base_center = [0, 0, 0]
@@ -287,6 +291,7 @@ def create_cyl_nodes(slices=1,
         base_center = [base_center[0],
                        base_center[1],
                        base_center[2] - liq_level]
+
     else:
         df = liq_df
         del liq_df
@@ -304,6 +309,9 @@ def create_cyl_nodes(slices=1,
     df['inr_radii'] = df['radii'] - df['delta_radii']/2
 
     df = generate_xyzn(df, base_center=base_center)
+
+    if remove_gas_nodes:
+        df = df[df['comp'] != 'Gas']
 
     df.reset_index(inplace=True, drop=True)
 
