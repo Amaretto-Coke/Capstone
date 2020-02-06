@@ -39,6 +39,7 @@ def update_node_temp_pd(func_df, delta_time, tick, tock, h_values, local_temps, 
 
     return func_df
 
+
 if __name__ == '__main__':
     try:
         if True:
@@ -125,6 +126,7 @@ if __name__ == '__main__':
 
             total_time_steps = int(len(time_steps)) - 1
 
+        meter_time = False
         startTime = datetime.now()
 
         for t in time_steps[:-1]:
@@ -143,16 +145,18 @@ if __name__ == '__main__':
 
         iteration_seconds = (datetime.now() - startTime).total_seconds()
 
-        num_nodes = len(node_df)
         print('\nFinished iterations.\n')
-        print('Iterated', num_nodes, 'nodes,', total_time_steps, 'times in', iteration_seconds, 'seconds.')
 
-        output = 'New ' + str(num_nodes) + ' ' + str(total_time_steps) + ' ' + str(iteration_seconds) + '\n'
-        print(output)
-        path = os.path.dirname(os.getcwd()) + '\Output\SpeedOut.txt'
-        with open(path, 'a') as file:
-            file.write(output)
-            file.close()
+        if meter_time:
+            num_nodes = len(node_df)
+
+            print('Iterated', num_nodes, 'nodes,', total_time_steps, 'times in', iteration_seconds, 'seconds.')
+
+            output = 'New ' + str(num_nodes) + ' ' + str(total_time_steps) + ' ' + str(iteration_seconds) + '\n'
+            path = os.path.dirname(os.getcwd()) + '\Output\SpeedOut.txt'
+            with open(path, 'a') as file:
+                file.write(output)
+                file.close()
 
         if export:
             print('Exporting results...\n')

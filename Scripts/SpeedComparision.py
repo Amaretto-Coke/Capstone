@@ -156,6 +156,7 @@ def make_my_plot(df, xyz_var_names, title, colors, math_str='', scatter_label=''
         plt.gcf().text(0.95, .07, math_str, fontsize=14, ha='right')
     plt.show()
 
+
 path = os.path.dirname(os.getcwd()) + '\Output\SpeedOut.txt'
 
 data = pd.read_csv(path, sep=' ')
