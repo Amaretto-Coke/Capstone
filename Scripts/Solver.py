@@ -1,9 +1,9 @@
 import sys
-import time
 import traceback
 from SetUp import *
 from Graphics import *
 from PostOffice import *
+from datetime import datetime
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.axisartist.axislines import SubplotZero
@@ -47,7 +47,7 @@ if __name__ == '__main__':
             # pd.set_option('display.width', 2000)
 
             inputs = import_cases_and_fluids()
-            export = True
+            export = False
 
             comp_Cps = {'Liquid': inputs['Liquid_Cp[J/kgK]'],
                         'Gas': inputs['Air_Cp[J/kgK]'],
@@ -125,6 +125,8 @@ if __name__ == '__main__':
 
             total_time_steps = int(len(time_steps)) - 1
 
+        startTime = datetime.now()
+
         for t in time_steps[:-1]:
             print('\rCurrently on timestep {0} of {1}.'.format(
                 int(t) + 1, total_time_steps),
@@ -139,7 +141,18 @@ if __name__ == '__main__':
                 str_times=str_time_steps
             )
 
+        iteration_seconds = (datetime.now() - startTime).total_seconds()
+
+        num_nodes = len(node_df)
         print('\nFinished iterations.\n')
+        print('Iterated', num_nodes, 'nodes,', total_time_steps, 'times in', iteration_seconds, 'seconds.')
+
+        output = 'New ' + str(num_nodes) + ' ' + str(total_time_steps) + ' ' + str(iteration_seconds) + '\n'
+        print(output)
+        path = os.path.dirname(os.getcwd()) + '\Output\SpeedOut.txt'
+        with open(path, 'a') as file:
+            file.write(output)
+            file.close()
 
         if export:
             print('Exporting results...\n')
@@ -148,13 +161,14 @@ if __name__ == '__main__':
                                df_names=['node_df'],
                                open_after=True,
                                index=True)
+
             except PermissionError:
                 print('File is locked for editing by user.\n\tNode network could not be exported.')
 
     except BaseException:
         print(sys.exc_info()[0])
-
         print(traceback.format_exc())
+
     finally:
         print("Press Enter to continue ...")
-        input()
+        # input()
