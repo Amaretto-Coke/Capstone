@@ -110,11 +110,11 @@ if __name__ == '__main__':
 
             h_vals = {'tank_exterior': 15, 'tank_interior': 15}
 
-            time_steps = list(range(0, inputs['TimeIterations[#]'] + 1))
-            str_time_steps = ["t={:0.2f}s".format(i * inputs['TimeStep[s]']) for i in time_steps]
+            time_steps = list(range(0, inputs['TimeIterations[#]'] + 1))  #
+            str_time_steps = ["t={:0.2f}s".format(i * inputs['TimeStep[s]']) for i in time_steps]  #
 
             # Creates numerous columns in the dataframe, one for every time iteration
-            node_df = node_df.assign(**{'T @ ' + str_time_steps[0]: loc_temps['amb_temp']})
+            node_df = node_df.assign(**{'T @ ' + str_time_steps[0]: loc_temps['amb_temp']})  #
 
             '''
             {'T @ ' + i: loc_temps['amb_temp'] for i in str_time_steps}
@@ -124,41 +124,46 @@ if __name__ == '__main__':
 
         generate_3d_node_geometry(node_df)
 
-        print('Starting time iterations...')
+        if inputs['Mode'] == 'Steady_State':
+            print('Starting steady state iterations...')
 
-        total_time_steps = int(len(time_steps)) - 1
+            
 
-        meter_time = False
-        startTime = datetime.now()
+        elif inputs['Mode'] == 'Fixed_Time':
+            print('Starting fixed time iterations...')
 
-        for t in time_steps[:-1]:
-            print('\rCurrently on timestep {0} of {1}.'.format(
-                int(t) + 1, total_time_steps),
-                  end='', flush=True)
-            node_df = update_node_temp_pd(
-                func_df=node_df,
-                delta_time=inputs['TimeStep[s]'],
-                tick=t,
-                tock=t+1,
-                h_values=h_vals,
-                local_temps=loc_temps,
-                str_times=str_time_steps
-            )
+            total_time_steps = int(len(time_steps)) - 1
+            meter_time = False
+            startTime = datetime.now()
 
-        iteration_seconds = (datetime.now() - startTime).total_seconds()
+            for t in time_steps[:-1]:
+                print('\rCurrently on timestep {0} of {1}.'.format(
+                    int(t) + 1, total_time_steps),
+                      end='', flush=True)
+                node_df = update_node_temp_pd(
+                    func_df=node_df,
+                    delta_time=inputs['TimeStep[s]'],
+                    tick=t,
+                    tock=t+1,
+                    h_values=h_vals,
+                    local_temps=loc_temps,
+                    str_times=str_time_steps
+                )
 
-        print('\nFinished iterations.\n')
+            iteration_seconds = (datetime.now() - startTime).total_seconds()
 
-        if meter_time:
-            num_nodes = len(node_df)
+            print('\nFinished iterations.\n')
 
-            print('Iterated', num_nodes, 'nodes,', total_time_steps, 'times in', iteration_seconds, 'seconds.')
+            if meter_time:
+                num_nodes = len(node_df)
 
-            output = 'New ' + str(num_nodes) + ' ' + str(total_time_steps) + ' ' + str(iteration_seconds) + '\n'
-            path = os.path.dirname(os.getcwd()) + '\Output\SpeedOut.txt'
-            with open(path, 'a') as file:
-                file.write(output)
-                file.close()
+                print('Iterated', num_nodes, 'nodes,', total_time_steps, 'times in', iteration_seconds, 'seconds.')
+
+                output = 'New ' + str(num_nodes) + ' ' + str(total_time_steps) + ' ' + str(iteration_seconds) + '\n'
+                path = os.path.dirname(os.getcwd()) + '\Output\SpeedOut.txt'
+                with open(path, 'a') as file:
+                    file.write(output)
+                    file.close()
 
         if export:
             print('Exporting results...\n')
