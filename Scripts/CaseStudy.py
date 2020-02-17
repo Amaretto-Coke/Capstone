@@ -304,12 +304,14 @@ if __name__ == '__main__':
     original_radii = set(df['radii'].to_list())
 
     #  Literature example had the condition of r1/r0=2, r2/r0=4, and r3/r0=6.
-    #  If we make r0 = 1, then [r1, r3] equal [2, 6].
+    #  If we make r0 = 1, then [r1, r3] equals [2, 6].
 
     new_radii = [1, 2, 6]
 
     radii_dict = dict(zip(original_radii, new_radii))
 
     df['radii'] = df['radii'].replace(radii_dict)
+
+
 
 

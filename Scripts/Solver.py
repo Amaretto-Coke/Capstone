@@ -9,7 +9,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.axisartist.axislines import SubplotZero
 
 
-def update_node_temp_pd(func_df, delta_time, tick, tock, h_values, local_temps, str_times):
+def update_node_temp_ft(func_df, delta_time, tick, tock, h_values, local_temps, str_times):
     tick_T_col = 'T @ ' + str_times[tick]
     tock_T_col = 'T @ ' + str_times[tock]
     tick_HF_col = 'Heat Flux @ ' + str_times[tick]
@@ -40,6 +40,33 @@ def update_node_temp_pd(func_df, delta_time, tick, tock, h_values, local_temps, 
     return func_df
 
 
+def update_node_temp_ss(func_df, delta_time, h_values, local_temps):
+
+    func_df['Heat Flux'] = \
+        ((5.67e-8 * (local_temps['fire_temp'] ** 4 - func_df['Temp'] ** 4) +
+         (local_temps['amb_temp'] - func_df['Temp']) * h_values['tank_exterior'])
+        ) * delta_time * func_df['node_vf']
+
+    func_df['Heat Gen'] = func_df['Heat Flux'] * func_df['otr_area'] / func_df['volume']
+
+    T_otr1 = func_df.loc[func_df['otr_nbr_1'], 'Temp'].to_numpy()
+    T_otr2 = func_df.loc[func_df['otr_nbr_2'], 'Temp'].to_numpy()
+    T_inr = func_df.loc[func_df['inr_nbr'], 'Temp'].to_numpy()
+    T_lft = func_df.loc[func_df['lft_nbr'], 'Temp'].to_numpy()
+    T_rht = func_df.loc[func_df['rht_nbr'], 'Temp'].to_numpy()
+    T_otr = (T_otr1 + T_otr2)/2
+
+    func_df['Temp'] = \
+        func_df['d1a'] * (T_otr - func_df['Temp']) + \
+        func_df['d1b'] * (T_inr - func_df['Temp']) + \
+        func_df['d2'] * (T_otr - T_inr) + \
+        func_df['d3'] * (T_rht - 2 * func_df['Temp'] + T_lft) + \
+        func_df['Heat Gen'] / func_df['rho'] / func_df['Cp'] + \
+        func_df['Temp']
+
+    return func_df
+
+
 if __name__ == '__main__':
     try:
         if True:
@@ -48,7 +75,7 @@ if __name__ == '__main__':
             # pd.set_option('display.width', 2000)
 
             inputs = import_cases_and_fluids()
-            export = False
+            export = True
 
             comp_Cps = {'Liquid': inputs['Liquid_Cp[J/kgK]'],
                         'Gas': inputs['Air_Cp[J/kgK]'],
@@ -110,27 +137,48 @@ if __name__ == '__main__':
 
             h_vals = {'tank_exterior': 15, 'tank_interior': 15}
 
-            time_steps = list(range(0, inputs['TimeIterations[#]'] + 1))  #
-            str_time_steps = ["t={:0.2f}s".format(i * inputs['TimeStep[s]']) for i in time_steps]  #
-
-            # Creates numerous columns in the dataframe, one for every time iteration
-            node_df = node_df.assign(**{'T @ ' + str_time_steps[0]: loc_temps['amb_temp']})  #
-
             '''
             {'T @ ' + i: loc_temps['amb_temp'] for i in str_time_steps}
             {'Heat Flux @ ' + i: np.float64(0) for i in str_time_steps}
             {'Heat Gen @ ' + i: np.float64(0) for i in str_time_steps}
             '''
 
-        generate_3d_node_geometry(node_df)
+        #  generate_3d_node_geometry(node_df)
 
         if inputs['Mode'] == 'Steady_State':
             print('Starting steady state iterations...')
+            t = 1
+            not_at_ss = True
+            node_df = node_df.assign(**{'Temp': loc_temps['amb_temp']})
+            while not_at_ss:
+                print('\rCurrently on timestep {0}.'.format(
+                    int(t)), end='', flush=True)
 
-            
+                old_temp = node_df['Temp'].copy(deep=True)
+
+                node_df = update_node_temp_ss(
+                    func_df=node_df,
+                    delta_time=inputs['TimeStep[s]'],
+                    h_values=h_vals,
+                    local_temps=loc_temps,
+                )
+
+                not_at_ss = (old_temp - node_df['Temp']).abs().sum() > 1e-3
+
+                t += 1
+
+            print('\n', not_at_ss, 'at', t, 'iterations which equates to', t * inputs['TimeStep[s]'])
+
+            print(pd.concat([old_temp, node_df['Temp']], axis=1))
 
         elif inputs['Mode'] == 'Fixed_Time':
             print('Starting fixed time iterations...')
+
+            time_steps = list(range(0, inputs['TimeIterations[#]'] + 1))  #
+            str_time_steps = ["t={:0.2f}s".format(
+                i * inputs['TimeStep[s]']) for i in time_steps]
+
+            node_df = node_df.assign(**{'T @ ' + str_time_steps[0]: loc_temps['amb_temp']})
 
             total_time_steps = int(len(time_steps)) - 1
             meter_time = False
@@ -140,7 +188,7 @@ if __name__ == '__main__':
                 print('\rCurrently on timestep {0} of {1}.'.format(
                     int(t) + 1, total_time_steps),
                       end='', flush=True)
-                node_df = update_node_temp_pd(
+                node_df = update_node_temp_ft(
                     func_df=node_df,
                     delta_time=inputs['TimeStep[s]'],
                     tick=t,
@@ -152,8 +200,6 @@ if __name__ == '__main__':
 
             iteration_seconds = (datetime.now() - startTime).total_seconds()
 
-            print('\nFinished iterations.\n')
-
             if meter_time:
                 num_nodes = len(node_df)
 
@@ -164,6 +210,8 @@ if __name__ == '__main__':
                 with open(path, 'a') as file:
                     file.write(output)
                     file.close()
+
+        print('\nFinished iterations.\n')
 
         if export:
             print('Exporting results...\n')

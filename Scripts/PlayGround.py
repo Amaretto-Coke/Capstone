@@ -2,7 +2,7 @@ import numpy
 
 
 
-'''
+
 import numpy as np
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
@@ -96,7 +96,9 @@ ax2.set_title("Lyapunov exponent")
 plt.tight_layout()
 
 plt.show()
-'''
+
+print(type(1e-3))
+
 
 '''
 import numpy as np
@@ -138,21 +140,20 @@ df = pd.DataFrame({'A': ['A0', 'A1', 'A2', 'A3', 'A4'],
                    'B': ['B0', 'B1', 'B2', 'B3', 'B4'],
                    'C': ['C0', 'C1', 'C2', 'C3', 'C4'],
                    'D': ['D0', 'D1', 'D2', 'D3', 'D4'],
-                   'E': ['E0', 'E1', 'E2', 'E3', 'E4'],
-                   'F': ['F0', 'F1', 'F2', 'F3', 'F4'],
+                   't1': [2, 4, 8, 16, 32],
+                   't2': [2, 4, 8, 17, 32],
                    'Z': [1, 1, 2, 3, 0]
                    })
-
 print(df)
 
-x = df.loc[df['Z'], 'A']
+ne = (df['t1'] != df['t2']).any()
 
-print(x)
+print(ne)
 
-x.reset_index(drop=True, inplace=True)
-
-print(x)
 '''
+
+
+
 
 
 
