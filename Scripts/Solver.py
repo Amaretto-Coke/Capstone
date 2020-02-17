@@ -40,14 +40,12 @@ def update_node_temp_ft(func_df, delta_time, tick, tock, h_values, local_temps, 
     return func_df
 
 
-def update_node_temp_ss(func_df, delta_time, h_values, local_temps):
+def update_node_temp_ss(func_df, h_values, local_temps):
 
-    func_df['Heat Flux'] = \
+    func_df['Heat Gen'] = \
         ((5.67e-8 * (local_temps['fire_temp'] ** 4 - func_df['Temp'] ** 4) +
          (local_temps['amb_temp'] - func_df['Temp']) * h_values['tank_exterior'])
-        ) * delta_time * func_df['node_vf']
-
-    func_df['Heat Gen'] = func_df['Heat Flux'] * func_df['otr_area'] / func_df['volume']
+        ) * func_df['node_vf'] * func_df['otr_area'] / func_df['volume']
 
     T_otr1 = func_df.loc[func_df['otr_nbr_1'], 'Temp'].to_numpy()
     T_otr2 = func_df.loc[func_df['otr_nbr_2'], 'Temp'].to_numpy()
@@ -56,13 +54,15 @@ def update_node_temp_ss(func_df, delta_time, h_values, local_temps):
     T_rht = func_df.loc[func_df['rht_nbr'], 'Temp'].to_numpy()
     T_otr = (T_otr1 + T_otr2)/2
 
-    func_df['Temp'] = \
-        func_df['d1a'] * (T_otr - func_df['Temp']) + \
-        func_df['d1b'] * (T_inr - func_df['Temp']) + \
-        func_df['d2'] * (T_otr - T_inr) + \
-        func_df['d3'] * (T_rht - 2 * func_df['Temp'] + T_lft) + \
-        func_df['Heat Gen'] / func_df['rho'] / func_df['Cp'] + \
-        func_df['Temp']
+    func_df['Temp'] = (
+        func_df['d1a'] * T_otr +
+        func_df['d1b'] * T_inr +
+        func_df['d2'] * (T_otr + T_inr) +
+        func_df['d3'] * (T_rht + T_lft) +
+        func_df['Heat Gen'] / func_df['rho'] / func_df['Cp']
+        )/(
+        func_df['d1a'] + func_df['d1b'] + 2 * func_df['d3']
+        )
 
     return func_df
 
@@ -143,22 +143,22 @@ if __name__ == '__main__':
             {'Heat Gen @ ' + i: np.float64(0) for i in str_time_steps}
             '''
 
-        #  generate_3d_node_geometry(node_df)
+        generate_3d_node_geometry(node_df)
 
         if inputs['Mode'] == 'Steady_State':
             print('Starting steady state iterations...')
             t = 1
             not_at_ss = True
             node_df = node_df.assign(**{'Temp': loc_temps['amb_temp']})
+            results_df = pd.DataFrame()
             while not_at_ss:
-                print('\rCurrently on timestep {0}.'.format(
+                print('\rCurrently on iteration {0}.'.format(
                     int(t)), end='', flush=True)
 
                 old_temp = node_df['Temp'].copy(deep=True)
 
                 node_df = update_node_temp_ss(
                     func_df=node_df,
-                    delta_time=inputs['TimeStep[s]'],
                     h_values=h_vals,
                     local_temps=loc_temps,
                 )
@@ -166,6 +166,8 @@ if __name__ == '__main__':
                 not_at_ss = (old_temp - node_df['Temp']).abs().sum() > 1e-3
 
                 t += 1
+
+            print(pd.concat([old_temp, node_df['Temp']], axis=1))
 
             print('\n', not_at_ss, 'at', t, 'iterations which equates to', t * inputs['TimeStep[s]'])
 
