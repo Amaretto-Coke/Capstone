@@ -43,7 +43,7 @@ def update_node_temp_ft(func_df, delta_time, tick, tock, h_values, local_temps, 
 def update_node_temp_ss(func_df, h_values, local_temps):
 
     func_df['Heat Gen'] = \
-        ((5.67e-8 * (local_temps['fire_temp'] ** 4 - func_df['Temp'] ** 4)* func_df['node_vf'] +
+        ((5.67e-8 * (local_temps['fire_temp'] ** 4 - func_df['Temp'] ** 4) * func_df['node_vf'] +
          (local_temps['amb_temp'] - func_df['Temp']) * h_values['tank_exterior'])
         ) * func_df['otr_area'] / func_df['volume']
 
@@ -152,7 +152,7 @@ if __name__ == '__main__':
             not_at_ss = True
             node_df = node_df.assign(**{'Temp': loc_temps['amb_temp']})
             results_df = pd.DataFrame(node_df['Temp'])
-            while not_at_ss and (t<10000):
+            while not_at_ss and (t<1000):
                 print('\rCurrently on iteration {0}.'.format(
                     int(t)), end='', flush=True)
 
@@ -166,13 +166,48 @@ if __name__ == '__main__':
 
                 not_at_ss = (old_temp - node_df['Temp']).abs().sum() > 1e-3
 
-                results_df = pd.concat([results_df, node_df['Temp']], axis=1)
+                results_df[t] = node_df['Temp'].to_numpy()
 
                 t += 1
 
+            copy_df = results_df.copy(deep=True)
+            copy_df.reset_index(inplace=True)
+            copy_df = copy_df.merge(node_df[['theta', 'radii']],
+                                    left_index=True,
+                                    right_index=True)
+            copy_df = copy_df[copy_df['theta'] > 0]
+            copy_df = copy_df[copy_df['radii'] == copy_df['radii'].max()]
+            copy_df.pop('theta')
+            copy_df.pop('radii')
+
+            phase_df = node_df[['theta', 'radii']].copy(deep=True)
+            phase_df = phase_df[phase_df['theta'] > 0]
+            phase_df = phase_df[phase_df['radii'] == phase_df['radii'].max()]
+            phase_df.pop('radii')
+
+            fig, (ax) = plt.subplots(1, 1, figsize=(12, 6))
+
+            palette = plt.get_cmap('hsv')
+            i = 0
+
+            for column in copy_df:
+                i += 1
+                ax.plot(phase_df['theta'],
+                        copy_df[column],
+                        color=palette(i),
+                        linewidth=1,
+                        alpha=0.9)
+            ax.xaxis.set_major_locator(plt.MultipleLocator(np.pi / 2))
+            ax.xaxis.set_minor_locator(plt.MultipleLocator(np.pi / 12))
+            ax.xaxis.set_major_formatter(plt.FuncFormatter(multiple_formatter()))
+            plt.xlabel('Phase Angle')
+
+            plt.show()
+            quit()
+
             print(results_df)
 
-            #print(pd.concat([node_df['Temp'], old_temp], axis=1))
+            # print(pd.concat([node_df['Temp'], old_temp], axis=1))
 
             print('\n', not_at_ss, 'at', t, 'iterations which equates to', t * inputs['TimeStep[s]'])
 
