@@ -15,10 +15,10 @@ def update_node_temp_ft(func_df, delta_time, tick, tock, h_values, local_temps, 
     tick_HF_col = 'Heat Flux @ ' + str_times[tick]
     tick_HG_col = 'Heat Gen @ ' + str_times[tick]
 
-    func_df[tick_HF_col] = \
-        ((5.67e-8 * (local_temps['fire_temp'] ** 4 - func_df[tick_T_col] ** 4) +
+    func_df[tick_HF_col] = (
+        (5.67e-8 * (local_temps['fire_temp'] ** 4 - func_df[tick_T_col] ** 4) * func_df['node_vf'] +
          (local_temps['amb_temp'] - func_df[tick_T_col]) * h_values['tank_exterior'])
-        ) * delta_time * func_df['node_vf']
+        ) * delta_time
 
     func_df[tick_HG_col] = func_df[tick_HF_col] * func_df['otr_area'] / func_df['volume']
 
@@ -43,9 +43,9 @@ def update_node_temp_ft(func_df, delta_time, tick, tock, h_values, local_temps, 
 def update_node_temp_ss(func_df, h_values, local_temps):
 
     func_df['Heat Gen'] = \
-        ((5.67e-8 * (local_temps['fire_temp'] ** 4 - func_df['Temp'] ** 4) +
+        ((5.67e-8 * (local_temps['fire_temp'] ** 4 - func_df['Temp'] ** 4)* func_df['node_vf'] +
          (local_temps['amb_temp'] - func_df['Temp']) * h_values['tank_exterior'])
-        ) * func_df['node_vf'] * func_df['otr_area'] / func_df['volume']
+        ) * func_df['otr_area'] / func_df['volume']
 
     T_otr1 = func_df.loc[func_df['otr_nbr_1'], 'Temp'].to_numpy()
     T_otr2 = func_df.loc[func_df['otr_nbr_2'], 'Temp'].to_numpy()
@@ -75,7 +75,6 @@ if __name__ == '__main__':
             # pd.set_option('display.width', 2000)
 
             inputs = import_cases_and_fluids()
-            export = True
 
             comp_Cps = {'Liquid': inputs['Liquid_Cp[J/kgK]'],
                         'Gas': inputs['Air_Cp[J/kgK]'],
@@ -143,15 +142,17 @@ if __name__ == '__main__':
             {'Heat Gen @ ' + i: np.float64(0) for i in str_time_steps}
             '''
 
-        generate_3d_node_geometry(node_df)
+        #  generate_3d_node_geometry(node_df)
+
+        export = True
 
         if inputs['Mode'] == 'Steady_State':
             print('Starting steady state iterations...')
             t = 1
             not_at_ss = True
             node_df = node_df.assign(**{'Temp': loc_temps['amb_temp']})
-            results_df = pd.DataFrame()
-            while not_at_ss:
+            results_df = pd.DataFrame(node_df['Temp'])
+            while not_at_ss and (t<10000):
                 print('\rCurrently on iteration {0}.'.format(
                     int(t)), end='', flush=True)
 
@@ -165,9 +166,13 @@ if __name__ == '__main__':
 
                 not_at_ss = (old_temp - node_df['Temp']).abs().sum() > 1e-3
 
+                results_df = pd.concat([results_df, node_df['Temp']], axis=1)
+
                 t += 1
 
-            print(pd.concat([old_temp, node_df['Temp']], axis=1))
+            print(results_df)
+
+            #print(pd.concat([node_df['Temp'], old_temp], axis=1))
 
             print('\n', not_at_ss, 'at', t, 'iterations which equates to', t * inputs['TimeStep[s]'])
 
@@ -218,8 +223,8 @@ if __name__ == '__main__':
         if export:
             print('Exporting results...\n')
             try:
-                export_results(dfs=[node_df],
-                               df_names=['node_df'],
+                export_results(dfs=[node_df, results_df],
+                               df_names=['node_df', 'results'],
                                open_after=True,
                                index=True)
 

@@ -296,13 +296,14 @@ def create_cyl_nodes(slices=1,
         df = liq_df
         del liq_df
 
-    df['otr_area'] = (df['radii'] + df['delta_radii']/2) * df['delta_theta'] * df['delta_height']
     df['lft_theta'] = df['theta'] + df['delta_theta'] / 2
     df['rht_theta'] = df['theta'] - df['delta_theta'] / 2
 
     if wall_thickness is not None:
         df = create_cyl_wall(df, wall_thickness=wall_thickness)
 
+    #  Outer area is zero if the node is not on the outside of the cylinder
+    df['otr_area'] = (df['radii'] + df['delta_radii'] / 2) * df['delta_theta'] * df['delta_height'] * (df['radii'] == df['radii'].max())
     df['volume'] = 4 * df['delta_radii'] * df['radii'] * (df['lft_theta'] - df['rht_theta']) ** 2 ** .5 / 2
 
     df['otr_radii'] = df['radii'] + df['delta_radii']/2
