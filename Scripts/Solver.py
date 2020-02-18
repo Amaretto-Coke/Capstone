@@ -152,7 +152,7 @@ if __name__ == '__main__':
             not_at_ss = True
             node_df = node_df.assign(**{'Temp': loc_temps['amb_temp']})
             results_df = pd.DataFrame(node_df['Temp'])
-            while not_at_ss and (t<1000):
+            while not_at_ss:
                 print('\rCurrently on iteration {0}.'.format(
                     int(t)), end='', flush=True)
 
@@ -166,10 +166,10 @@ if __name__ == '__main__':
 
                 not_at_ss = (old_temp - node_df['Temp']).abs().sum() > 1e-3
 
-                results_df[t] = node_df['Temp'].to_numpy()
+                # results_df[t] = node_df['Temp'].to_numpy()
 
                 t += 1
-
+            '''
             copy_df = results_df.copy(deep=True)
             copy_df.reset_index(inplace=True)
             copy_df = copy_df.merge(node_df[['theta', 'radii']],
@@ -203,11 +203,9 @@ if __name__ == '__main__':
             plt.xlabel('Phase Angle')
 
             plt.show()
-            quit()
 
             print(results_df)
-
-            # print(pd.concat([node_df['Temp'], old_temp], axis=1))
+            '''
 
             print('\n', not_at_ss, 'at', t, 'iterations which equates to', t * inputs['TimeStep[s]'])
 
