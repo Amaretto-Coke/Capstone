@@ -42,6 +42,12 @@ def update_node_temp_ft(func_df, delta_time, tick, tock, h_values, local_temps, 
 
 def update_node_temp_ss(func_df, h_values, local_temps):
 
+    def root4improved(a, b, c):
+        A = (3**0.5*(256*a**3*c**3+27*a**2*b**4)**0.5+9*a*b**2)**(1/3)
+        B = (A/(2**(1/3)*3**(2/3)*a)-(4*(2/3)**(1/3)*c)/A)**0.5
+        C = 1/2*((2*b)/(a*B)-A/(2**(1/3)*3**(2/3)*a)+(4*(2/3)**(1/3)*c)/A)**0.5-1/2*B
+        return np.where(a != 0, np.real(C), np.real(c/b))
+
     T_otr1 = func_df.loc[func_df['otr_nbr_1'], 'Temp'].to_numpy()
     T_otr2 = func_df.loc[func_df['otr_nbr_2'], 'Temp'].to_numpy()
     T_inr = func_df.loc[func_df['inr_nbr'], 'Temp'].to_numpy()
@@ -49,23 +55,29 @@ def update_node_temp_ss(func_df, h_values, local_temps):
     T_rht = func_df.loc[func_df['rht_nbr'], 'Temp'].to_numpy()
     T_otr = (T_otr1 + T_otr2) / 2
 
+    func_df['A'] = func_df['node_vf'] * 5.67e-8 * func_df['otr_area'] / func_df['volume']
+
+    # Since fund_df['otr_area'] should be zero for all non-wall nodes, this assignment should work for all nodes.
     func_df['B'] = func_df['d1a'].to_numpy() + \
                    func_df['d1b'].to_numpy() + \
-                   2 * func_df['d3'].to_numpy()
+                   2 * func_df['d3'].to_numpy() + \
+                   h_values['tank_exterior'] * func_df['otr_area'] / func_df['volume']
 
+    # Since fund_df['otr_area'] should be zero for all non-wall nodes, this assignment should work for all nodes.
     func_df['C'] = func_df['d1a'] * T_otr + \
                    func_df['d1b'] * T_inr + \
                    func_df['d2'] * (T_otr + T_inr) + \
-                   func_df['d3'] * (T_rht + T_lft)
+                   func_df['d3'] * (T_rht + T_lft) + \
+                   func_df['otr_area'] / func_df['volume'] * (
+                       func_df['node_vf'] * 5.67e-8 * local_temps['fire_temp'] ** 4 +
+                       h_values['tank_exterior'] * local_temps['amb_temp']
+                   )
 
-    func_df['D'] = func_df['node_vf'] * 5.67e-8
+    func_df['Temp'] = root4improved(func_df['A'].to_numpy(dtype=complex),
+                                    func_df['B'].to_numpy(dtype=complex),
+                                    func_df['C'].to_numpy(dtype=complex))
 
-    func_df['E'] = (func_df['B'] * func_df['volume'] / func_df['otr_area']).replace(np.inf, 0) + h_values['tank_exterior'] *
-
-    func_df['F'] = func_df['node_vf'] * 5.67e-8 * local_temps['fire_temp'] ** 4 + h_values['tank_exterior'] *
-
-    print(func_df['E'])
-    quit()
+    return func_df
 
 
 
@@ -198,50 +210,12 @@ if __name__ == '__main__':
                     local_temps=loc_temps,
                 )
 
-                not_at_ss = t < 1000  # (old_temp - node_df['Temp']).abs().sum() > 1e-2
-
-                # results_df[t] = node_df['Temp'].to_numpy()
+                # not_at_ss = t < 1000
+                not_at_ss = (old_temp - node_df['Temp']).abs().sum() > 1e-2
 
                 t += 1
-            '''
-            copy_df = results_df.copy(deep=True)
-            copy_df.reset_index(inplace=True)
-            copy_df = copy_df.merge(node_df[['theta', 'radii']],
-                                    left_index=True,
-                                    right_index=True)
-            copy_df = copy_df[copy_df['theta'] > 0]
-            copy_df = copy_df[copy_df['radii'] == copy_df['radii'].max()]
-            copy_df.pop('theta')
-            copy_df.pop('radii')
 
-            phase_df = node_df[['theta', 'radii']].copy(deep=True)
-            phase_df = phase_df[phase_df['theta'] > 0]
-            phase_df = phase_df[phase_df['radii'] == phase_df['radii'].max()]
-            phase_df.pop('radii')
-
-            fig, (ax) = plt.subplots(1, 1, figsize=(12, 6))
-
-            palette = plt.get_cmap('hsv')
-            i = 0
-
-            for column in copy_df:
-                i += 1
-                ax.plot(phase_df['theta'],
-                        copy_df[column],
-                        color=palette(i),
-                        linewidth=1,
-                        alpha=0.9)
-            ax.xaxis.set_major_locator(plt.MultipleLocator(np.pi / 2))
-            ax.xaxis.set_minor_locator(plt.MultipleLocator(np.pi / 12))
-            ax.xaxis.set_major_formatter(plt.FuncFormatter(multiple_formatter()))
-            plt.xlabel('Phase Angle')
-
-            plt.show()
-
-            print(results_df)
-            '''
-
-            print('\n', not_at_ss, 'at', t, 'iterations which equates to', t * inputs['TimeStep[s]'])
+            print('\n', not_at_ss, 'at', t, 'iterations.')
 
             print(pd.concat([old_temp, node_df['Temp']], axis=1))
 

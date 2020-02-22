@@ -252,15 +252,17 @@ import numpy as np
 def root4improved(a, b, c):
     A = (3**0.5*(256*a**3*c**3+27*a**2*b**4)**0.5+9*a*b**2)**(1/3)
     B = (A/(2**(1/3)*3**(2/3)*a)-(4*(2/3)**(1/3)*c)/A)**0.5
-    return 1/2*((2*b)/(a*B)-A/(2**(1/3)*3**(2/3)*a)+(4*(2/3)**(1/3)*c)/A)**0.5-1/2*B
+    C = 1/2*((2*b)/(a*B)-A/(2**(1/3)*3**(2/3)*a)+(4*(2/3)**(1/3)*c)/A)**0.5-1/2*B
+    return np.where(a != 0, np.real(C), np.real(c/b))
 
 
-my_a = np.array([0, 10, 100], dtype=complex)
-my_b = np.array([3, 100, 1], dtype=complex)
-my_c = np.array([2, 1, 10], dtype=complex)
+my_a = np.array([0, 10, 0], dtype=complex)
+my_b = np.array([3, 100, 7], dtype=complex)  # B arguments cannot equal 0
+my_c = np.array([2, 0, 10], dtype=complex)
 
 res = root4improved(my_a, my_b, my_c)
 
+print(res)
 print(res)
 
 '''
