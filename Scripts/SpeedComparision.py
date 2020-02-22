@@ -63,11 +63,6 @@ def get_pkmn_pallet(hues=None, types=None):
 
 
 def normalize_vector(vector):
-    """
-    Takes a vector and returns its' unit vector.
-    :param vector: The vector to be normalized, as a 1 x 3 numpy array.
-    :return: The normalized vector, as a 1 x 3 numpy array.
-    """
     to_sum = []
     for p in vector:
         to_sum.append(p**2)

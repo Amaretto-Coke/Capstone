@@ -42,8 +42,41 @@ def update_node_temp_ft(func_df, delta_time, tick, tock, h_values, local_temps, 
 
 def update_node_temp_ss(func_df, h_values, local_temps):
 
+    T_otr1 = func_df.loc[func_df['otr_nbr_1'], 'Temp'].to_numpy()
+    T_otr2 = func_df.loc[func_df['otr_nbr_2'], 'Temp'].to_numpy()
+    T_inr = func_df.loc[func_df['inr_nbr'], 'Temp'].to_numpy()
+    T_lft = func_df.loc[func_df['lft_nbr'], 'Temp'].to_numpy()
+    T_rht = func_df.loc[func_df['rht_nbr'], 'Temp'].to_numpy()
+    T_otr = (T_otr1 + T_otr2) / 2
+
+    func_df['B'] = func_df['d1a'].to_numpy() + \
+                   func_df['d1b'].to_numpy() + \
+                   2 * func_df['d3'].to_numpy()
+
+    func_df['C'] = func_df['d1a'] * T_otr + \
+                   func_df['d1b'] * T_inr + \
+                   func_df['d2'] * (T_otr + T_inr) + \
+                   func_df['d3'] * (T_rht + T_lft)
+
+    func_df['D'] = func_df['node_vf'] * 5.67e-8
+
+    func_df['E'] = (func_df['B'] * func_df['volume'] / func_df['otr_area']).replace(np.inf, 0) + h_values['tank_exterior'] *
+
+    func_df['F'] = func_df['node_vf'] * 5.67e-8 * local_temps['fire_temp'] ** 4 + h_values['tank_exterior'] *
+
+    print(func_df['E'])
+    quit()
+
+
+
+# Old Steady State Function
+'''
+def update_node_temp_ss(func_df, h_values, local_temps):
+
     func_df['Heat Gen'] = \
-        ((5.67e-8 * (local_temps['fire_temp'] ** 4 - func_df['Temp'] ** 4) * func_df['node_vf'] +
+        ((5.67e-8 * (
+                local_temps['fire_temp'] ** 4 - func_df['Temp'] ** 4
+        ) * func_df['node_vf'] +
          (local_temps['amb_temp'] - func_df['Temp']) * h_values['tank_exterior'])
         ) * func_df['otr_area'] / func_df['volume']
 
@@ -61,10 +94,11 @@ def update_node_temp_ss(func_df, h_values, local_temps):
         func_df['d3'] * (T_rht + T_lft) +
         func_df['Heat Gen'] / func_df['rho'] / func_df['Cp']
         )/(
-        func_df['d1a'] + func_df['d1b'] + 2 * func_df['d3']
+        func_df['d1a'].to_numpy() + func_df['d1b'].to_numpy() + func_df['d3'].to_numpy() + func_df['d3'].to_numpy()
         )
 
     return func_df
+    '''
 
 
 if __name__ == '__main__':
@@ -164,7 +198,7 @@ if __name__ == '__main__':
                     local_temps=loc_temps,
                 )
 
-                not_at_ss = (old_temp - node_df['Temp']).abs().sum() > 1e-3
+                not_at_ss = t < 1000  # (old_temp - node_df['Temp']).abs().sum() > 1e-2
 
                 # results_df[t] = node_df['Temp'].to_numpy()
 
