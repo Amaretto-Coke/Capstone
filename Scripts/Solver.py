@@ -40,6 +40,44 @@ def update_node_temp_ft(func_df, delta_time, tick, tock, h_values, local_temps, 
     return func_df
 
 
+def ss_error(func_df):
+
+    T_otr1 = func_df.loc[func_df['otr_nbr_1'], 'Temp'].to_numpy()
+    T_otr2 = func_df.loc[func_df['otr_nbr_2'], 'Temp'].to_numpy()
+    T_inr = func_df.loc[func_df['inr_nbr'], 'Temp'].to_numpy()
+    T_lft = func_df.loc[func_df['lft_nbr'], 'Temp'].to_numpy()
+    T_rht = func_df.loc[func_df['rht_nbr'], 'Temp'].to_numpy()
+    T_otr = (T_otr1 + T_otr2) / 2
+
+
+    func_df['B'] = func_df['d1a'].to_numpy() + \
+                   func_df['d1b'].to_numpy() + \
+                   2 * func_df['d3'].to_numpy()
+
+    # Since fund_df['otr_area'] should be zero for all non-wall nodes, this assignment should work for all nodes.
+    func_df['C'] = func_df['d1a'].to_numpy() * T_otr + \
+                   func_df['d1b'].to_numpy() * T_inr + \
+                   func_df['d2'].to_numpy() * (T_otr - T_inr) + \
+                   func_df['d3'].to_numpy() * (T_rht + T_lft)
+
+    error = func_df['C'].to_numpy()/func_df['B'].to_numpy() - func_df['Temp'].to_numpy()
+
+    return error
+
+
+def preprocess_node_temp_ss(func_df, h_values):
+    # Since fund_df['otr_area'] should be zero for all non-wall nodes, this assignment should work for all nodes.
+    func_df['A'] = func_df['node_vf'].to_numpy() * 5.67e-8 * func_df['otr_area'].to_numpy() / func_df['volume'].to_numpy()
+
+    # Since fund_df['otr_area'] should be zero for all non-wall nodes, this assignment should work for all nodes.
+    func_df['B'] = func_df['d1a'].to_numpy() + \
+                   func_df['d1b'].to_numpy() + \
+                   2 * func_df['d3'].to_numpy() + \
+                   h_values['tank_exterior'] * func_df['otr_area'].to_numpy() / func_df['volume'].to_numpy()
+
+    return func_df
+
+
 def update_node_temp_ss(func_df, h_values, local_temps):
 
     def root4improved(a, b, c):
@@ -55,29 +93,22 @@ def update_node_temp_ss(func_df, h_values, local_temps):
     T_rht = func_df.loc[func_df['rht_nbr'], 'Temp'].to_numpy()
     T_otr = (T_otr1 + T_otr2) / 2
 
-    func_df['A'] = func_df['node_vf'] * 5.67e-8 * func_df['otr_area'] / func_df['volume']
-
     # Since fund_df['otr_area'] should be zero for all non-wall nodes, this assignment should work for all nodes.
-    func_df['B'] = func_df['d1a'].to_numpy() + \
-                   func_df['d1b'].to_numpy() + \
-                   2 * func_df['d3'].to_numpy() + \
-                   h_values['tank_exterior'] * func_df['otr_area'] / func_df['volume']
-
-    # Since fund_df['otr_area'] should be zero for all non-wall nodes, this assignment should work for all nodes.
-    func_df['C'] = func_df['d1a'] * T_otr + \
-                   func_df['d1b'] * T_inr + \
-                   func_df['d2'] * (T_otr + T_inr) + \
-                   func_df['d3'] * (T_rht + T_lft) + \
-                   func_df['otr_area'] / func_df['volume'] * (
-                       func_df['node_vf'] * 5.67e-8 * local_temps['fire_temp'] ** 4 +
-                       h_values['tank_exterior'] * local_temps['amb_temp']
+    func_df['C'] = func_df['d1a'].to_numpy() * T_otr + \
+                   func_df['d1b'].to_numpy() * T_inr + \
+                   func_df['d2'].to_numpy() * (T_otr - T_inr) + \
+                   func_df['d3'].to_numpy() * (T_rht + T_lft) + \
+                   func_df['otr_area'].to_numpy() / func_df['volume'].to_numpy() * (
+                           func_df['node_vf'].to_numpy() * 5.67e-8 * local_temps['fire_temp'] ** 4 +
+                           h_values['tank_exterior'] * local_temps['amb_temp']
                    )
 
-    func_df['Temp'] = root4improved(func_df['A'].to_numpy(dtype=complex),
-                                    func_df['B'].to_numpy(dtype=complex),
-                                    func_df['C'].to_numpy(dtype=complex))
+    temp = (root4improved(func_df['A'].to_numpy(dtype=complex),
+                          func_df['B'].to_numpy(dtype=complex),
+                          func_df['C'].to_numpy(dtype=complex))
+                       ).round(5)
 
-    return func_df
+    return temp
 
 
 
@@ -189,35 +220,49 @@ if __name__ == '__main__':
             '''
 
         #  generate_3d_node_geometry(node_df)
-
-        export = True
+        export = False
 
         if inputs['Mode'] == 'Steady_State':
             print('Starting steady state iterations...')
-            t = 1
+            t = 0
             not_at_ss = True
             node_df = node_df.assign(**{'Temp': loc_temps['amb_temp']})
-            results_df = pd.DataFrame(node_df['Temp'])
-            while not_at_ss:
-                print('\rCurrently on iteration {0}.'.format(
-                    int(t)), end='', flush=True)
+            node_df['Error'] = ss_error(node_df)
 
+            #results_df = pd.DataFrame(node_df[['radii', 'theta', 'volume', 'otr_area', 'Error', 'Temp']])
+
+            #slope_df = pd.DataFrame()
+            old_temp = node_df['Temp'].copy(deep=True)
+
+            node_df = preprocess_node_temp_ss(node_df, h_vals)
+
+            while not_at_ss: # and t < 10000:
                 old_temp = node_df['Temp'].copy(deep=True)
 
-                node_df = update_node_temp_ss(
+                node_df['Temp'] = update_node_temp_ss(
                     func_df=node_df,
                     h_values=h_vals,
                     local_temps=loc_temps,
                 )
 
-                # not_at_ss = t < 1000
-                not_at_ss = (old_temp - node_df['Temp']).abs().sum() > 1e-2
+                nodes_at_ss = node_df['Temp'].eq(old_temp).sum()
+
+                print(
+                    '\rCurrently on iteration {0}, there are {1}/{2} nodes at steady-state.'.format(
+                        int(t), nodes_at_ss, len(node_df)
+                    ), end='', flush=True)
+
+                not_at_ss = nodes_at_ss != len(node_df)
+
+                #slope_df[str(t)] = node_df['Temp'] - old_temp
 
                 t += 1
 
+            #print(slope_df.T.iloc[pd.np.r_[0:10, -10:0]])
+
             print('\n', not_at_ss, 'at', t, 'iterations.')
 
-            print(pd.concat([old_temp, node_df['Temp']], axis=1))
+            # print(pd.concat([old_temp, node_df['Temp']], axis=1))
 
         elif inputs['Mode'] == 'Fixed_Time':
             print('Starting fixed time iterations...')
@@ -260,13 +305,14 @@ if __name__ == '__main__':
                     file.close()
 
         print('\nFinished iterations.\n')
+        generate_3d_node_geometry(node_df)
 
         if export:
             print('Exporting results...\n')
             try:
-                export_results(dfs=[node_df, results_df],
-                               df_names=['node_df', 'results'],
-                               open_after=True,
+                export_results(dfs=[node_df, slope_df],
+                               df_names=['node_df', 'slope_df'],
+                               open_after=False,
                                index=True)
 
             except PermissionError:

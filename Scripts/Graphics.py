@@ -67,13 +67,16 @@ class Multiple:
 
 
 def generate_3d_node_geometry(prop_df):
+
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(prop_df.x.to_list(),
-               prop_df.y.to_list(),
-               prop_df.z.to_list(),
-               c=prop_df.c.to_list(),
-               s=5)
+    p = ax.scatter(prop_df.x.to_list(),
+                   prop_df.y.to_list(),
+                   prop_df.z.to_list(),
+                   c=prop_df['Temp'].to_list(),
+                   cmap='viridis',
+                   s=5)
+    fig.colorbar(p)
     plt.show()
 
 
@@ -97,7 +100,7 @@ def generate_boundary_graphs(temp_df, prop_df, time_steps, features, labels, col
 
     for ax, feature, label in zip(axs.flatten(), features, labels):
         lines_df = copy_df.copy(deep=True)
-        for time in range(0, len(time_steps) - 1):
+        for time in temp_df:
             line_df = lines_df[lines_df['TimeStep'] == time_steps.iloc[time]]
             ax.plot(line_df['theta'],
                     line_df[feature],
@@ -116,6 +119,37 @@ def generate_boundary_graphs(temp_df, prop_df, time_steps, features, labels, col
     plt.xlabel('Phase Angle')
     plt.subplots_adjust(hspace=0.0, left=0.15)
     plt.show()
+
+
+def generate_ss_ring_graph(temp_df, prop_df):
+    rings = prop_df['radii'].to_list()
+    rings.reverse()
+    rings = list(set(rings))
+    rings.reverse()
+
+    fig, axs = plt.subplots(nrows=len(rings),
+                            ncols=1,
+                            sharex=True,
+                            figsize=(10, 20))
+
+    for ax, radii, ring in zip(axs.flatten(), rings, range(len(rings))):
+
+
+        ax.grid(True)
+        ax.set_xlim(left=0, right=2 * math.pi)
+        ax.set_ylabel('{:.2f}'.format(ring), rotation=0)
+        ax.set_yticklabels(ax.get_yticklabels()[0:-1])
+
+        ax.xaxis.set_major_locator(plt.MultipleLocator(np.pi / 2))
+        ax.xaxis.set_minor_locator(plt.MultipleLocator(np.pi / 12))
+        ax.xaxis.set_major_formatter(plt.FuncFormatter(multiple_formatter()))
+
+    plt.xlabel('Phase Angle')
+    plt.subplots_adjust(hspace=0.0, left=0.15)
+
+    plt.show()
+
+
 
 
 def generate_time_gif(temp_df, prop_df, time_steps):
