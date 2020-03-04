@@ -127,10 +127,10 @@ if __name__ == '__main__':
     '''
     print('Making graphics.\n')
 
-    generate_time_gif(temp_df=temp_df, prop_df=node_df, time_steps=h_values)
+    generate_time_gif(temp_df=temp_df, prop_df=df, time_steps=h_values)
 
     generate_boundary_graphs(temp_df=temp_df,
-                             prop_df=node_df,
+                             prop_df=df,
                              time_steps=h_values,
                              features=['heat_flux',
                                        'tock_temp',

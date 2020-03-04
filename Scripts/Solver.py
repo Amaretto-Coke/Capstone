@@ -196,13 +196,22 @@ if __name__ == '__main__':
 
             node_df = assign_node_view_factor(df=node_df, cyl_view_factor=vf)
 
-            node_df = create_node_fdm_constants(
-                df=node_df,
-                densities=comp_rhos,
-                specific_heats=comp_Cps,
-                thermal_conductivities=comp_ks,
-                delta_time=inputs['TimeStep[s]']
-            )
+            if inputs['Mode'] == 'Steady_State':
+                node_df = create_node_fdm_constants(
+                    df=node_df,
+                    densities=comp_rhos,
+                    specific_heats=comp_Cps,
+                    thermal_conductivities=comp_ks,
+                    delta_time=1
+                )
+            else:
+                node_df = create_node_fdm_constants(
+                    df=node_df,
+                    densities=comp_rhos,
+                    specific_heats=comp_Cps,
+                    thermal_conductivities=comp_ks,
+                    delta_time=inputs['TimeStep[s]']
+                )
 
             nodes = list(node_df.index)
             otr_node_radii = node_df['radii'].max()
@@ -219,17 +228,18 @@ if __name__ == '__main__':
             {'Heat Gen @ ' + i: np.float64(0) for i in str_time_steps}
             '''
 
-        #  generate_3d_node_geometry(node_df)
+        #  generate_3d_node_geometry(df)
         export = False
 
         if inputs['Mode'] == 'Steady_State':
             print('Starting steady state iterations...')
+
             t = 0
             not_at_ss = True
             node_df = node_df.assign(**{'Temp': loc_temps['amb_temp']})
             node_df['Error'] = ss_error(node_df)
 
-            #results_df = pd.DataFrame(node_df[['radii', 'theta', 'volume', 'otr_area', 'Error', 'Temp']])
+            #results_df = pd.DataFrame(df[['radii', 'theta', 'volume', 'otr_area', 'Error', 'Temp']])
 
             #slope_df = pd.DataFrame()
             old_temp = node_df['Temp'].copy(deep=True)
@@ -254,15 +264,9 @@ if __name__ == '__main__':
 
                 not_at_ss = nodes_at_ss != len(node_df)
 
-                #slope_df[str(t)] = node_df['Temp'] - old_temp
-
                 t += 1
 
-            #print(slope_df.T.iloc[pd.np.r_[0:10, -10:0]])
-
             print('\n', not_at_ss, 'at', t, 'iterations.')
-
-            # print(pd.concat([old_temp, node_df['Temp']], axis=1))
 
         elif inputs['Mode'] == 'Fixed_Time':
             print('Starting fixed time iterations...')
@@ -311,7 +315,7 @@ if __name__ == '__main__':
             print('Exporting results...\n')
             try:
                 export_results(dfs=[node_df, slope_df],
-                               df_names=['node_df', 'slope_df'],
+                               df_names=['df', 'slope_df'],
                                open_after=False,
                                index=True)
 

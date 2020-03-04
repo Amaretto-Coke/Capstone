@@ -1,8 +1,35 @@
+import pandas as pd
+import os
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+import threading
+
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+def generate_3d_node_geometry(i):
+    prop_df = pd.read_csv(os.path.dirname(os.getcwd()) + r'\output_df.csv')
+
+    p = ax.scatter(prop_df.x.to_list(),
+                   prop_df.y.to_list(),
+                   prop_df.z.to_list(),
+                   c=prop_df['Temp'].to_list(),
+                   cmap='viridis',
+                   s=10)
+    fig.colorbar(p)
+    plt.show()
+
+ani = FuncAnimation(fig, generate_3d_node_geometry, frames=17, repeat=True)
+
+plt.show()
+
+"""
 #  Figuring out which solution to the equation a*x**4 + b*x = c
 #  https://www.wolframalpha.com/input/?i=ax%5E4%2Bbx%3Dc
 
 #  Testing the speed of the various root functions
-"""
+
 import timeit
 import itertools
 
@@ -111,10 +138,10 @@ while x <= 15:
               )
 
     x += 1
-"""
+
 
 #  Testing the root equations for real and positive results with positive coefficients
-"""
+
 import itertools
 import timeit
 
@@ -158,7 +185,7 @@ for com in combos:
           '({0.real:.2f} {0.imag:+.2f}j)'.format(r3), '\t',
           '({0.real:.2f} {0.imag:+.2f}j)'.format(r4))
           
-"""
+
 
 #  Simplifying the root function
 
@@ -264,6 +291,8 @@ res = root4improved(my_a, my_b, my_c)
 
 print(res)
 print(res)
+
+"""
 
 '''
 import numpy as np

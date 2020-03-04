@@ -296,8 +296,8 @@ def outer_node_graph(node_df, time_steps, stop, str_time_steps):
     plt.show()
 
 
-# make_cylinder_graphic(node_df,str_time_steps,inputs)
-# outer_node_graph(node_df, time_steps, 5, str_time_steps)
+# make_cylinder_graphic(df,str_time_steps,inputs)
+# outer_node_graph(df, time_steps, 5, str_time_steps)
 
 
 
