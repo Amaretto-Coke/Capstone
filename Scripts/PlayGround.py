@@ -1,28 +1,43 @@
-import pandas as pd
 import os
-from mpl_toolkits.mplot3d import Axes3D
+import pandas as pd
+import matplotlib.cm as cm
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-import threading
+import matplotlib.colors as colors
+
+
+
+node_df = pd.read_csv(os.path.dirname(os.getcwd()) + r'\output_df.csv')
+
+max_temp = node_df['Temp'].max()
+min_temp = node_df['Temp'].min()
+normalize = colors.Normalize(vmin=min_temp, vmax=max_temp)
 
 fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
+ax = plt.gca()
+ax.set_aspect('equal')
+heatmap = ax.tricontour(node_df['x'],
+                        node_df['y'],
+                        node_df['Temp'],
+                        cmap=cm.rainbow,
+                        norm=normalize,
+                        alpha=0.9)
+plt.axis('off')
+cbaxes = fig.add_axes([0.02, 0.1, 0.03, 0.8])  # This is the position for the colorbar
+cb = fig.colorbar(heatmap, cax=cbaxes, format='%.1f')
+for line in cb.lines:
+   line.set_linewidth(35)
 
-def generate_3d_node_geometry(i):
-    prop_df = pd.read_csv(os.path.dirname(os.getcwd()) + r'\output_df.csv')
+new_axis = fig.add_axes(ax.get_position(),
+                        projection='polar',
+                        frameon=False,
+                        rlabel_position=90)
 
-    p = ax.scatter(prop_df.x.to_list(),
-                   prop_df.y.to_list(),
-                   prop_df.z.to_list(),
-                   c=prop_df['Temp'].to_list(),
-                   cmap='viridis',
-                   s=10)
-    fig.colorbar(p)
-    plt.show()
+new_axis.yaxis.grid(color='k', linewidth=0.75, alpha=1)
+new_axis.xaxis.grid(False)
+new_axis.set_xticks([])
+new_axis.set_rticks([1, 2, 4, 6])
+new_axis.tick_params(labelleft=False)
 
-ani = FuncAnimation(fig, generate_3d_node_geometry, frames=17, repeat=True)
-
-plt.show()
 
 """
 #  Figuring out which solution to the equation a*x**4 + b*x = c

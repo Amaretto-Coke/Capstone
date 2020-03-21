@@ -12,15 +12,18 @@ from mpl_toolkits.axisartist.axislines import SubplotZero
 def update_node_temp_ft(func_df, delta_time, tick, tock, h_values, local_temps, str_times):
     tick_T_col = 'T @ ' + str_times[tick]
     tock_T_col = 'T @ ' + str_times[tock]
-    tick_HF_col = 'Heat Flux @ ' + str_times[tick]
+    tick_HFe_col = 'External Heat Flux @ ' + str_times[tick]
+    tick_HFi_col = 'Internal Heat Flux @ ' + str_times[tick]
     tick_HG_col = 'Heat Gen @ ' + str_times[tick]
 
-    func_df[tick_HF_col] = (
+    func_df[tick_HFe_col] = (
         (5.67e-8 * (local_temps['fire_temp'] ** 4 - func_df[tick_T_col] ** 4) * func_df['node_vf'] +
          (local_temps['amb_temp'] - func_df[tick_T_col]) * h_values['tank_exterior'])
         ) * delta_time
 
-    func_df[tick_HG_col] = func_df[tick_HF_col] * func_df['otr_area'] / func_df['volume']
+    func_df[tick_HFi_col] = (local_temps['amb_temp'] - func_df[tick_T_col]) * h_values['tank_interior'] * delta_time
+
+    func_df[tick_HG_col] = (func_df[tick_HFe_col] * func_df['otr_area'] + func_df[tick_HFi_col] * func_df['inr_area']) / func_df['volume']
 
     T_otr1 = func_df.loc[func_df['otr_nbr_1'], tick_T_col].to_numpy()
     T_otr2 = func_df.loc[func_df['otr_nbr_2'], tick_T_col].to_numpy()
@@ -98,10 +101,11 @@ def update_node_temp_ss(func_df, h_values, local_temps):
                    func_df['d1b'].to_numpy() * T_inr + \
                    func_df['d2'].to_numpy() * (T_otr - T_inr) + \
                    func_df['d3'].to_numpy() * (T_rht + T_lft) + \
-                   func_df['otr_area'].to_numpy() / func_df['volume'].to_numpy() * (
+                   (func_df['otr_area'].to_numpy() * (
                            func_df['node_vf'].to_numpy() * 5.67e-8 * local_temps['fire_temp'] ** 4 +
                            h_values['tank_exterior'] * local_temps['amb_temp']
-                   )
+                   ) + func_df['inr_area'].to_numpy() * h_values['tank_interior'] * local_temps['amb_temp']
+                    ) / func_df['volume'].to_numpy()
 
     temp = (root4improved(func_df['A'].to_numpy(dtype=complex),
                           func_df['B'].to_numpy(dtype=complex),
@@ -153,6 +157,12 @@ if __name__ == '__main__':
 
             inputs = import_cases_and_fluids()
 
+            print(inputs)
+
+            quit()
+
+            liq_properties = mix_me()
+
             comp_Cps = {'Liquid': inputs['Liquid_Cp[J/kgK]'],
                         'Gas': inputs['Air_Cp[J/kgK]'],
                         'Wall': inputs['Wall_Cp[J/kgK]']}
@@ -194,7 +204,11 @@ if __name__ == '__main__':
                 print('Building node visual...\n')
                 generate_3d_node_geometry(prop_df=node_df)
 
-            node_df = assign_node_view_factor(df=node_df, cyl_view_factor=vf)
+            node_df = assign_node_view_factor(
+                df=node_df,
+                cyl_view_factor=vf,
+                cyl_emissivity=inputs['Emissivity']
+            )
 
             if inputs['Mode'] == 'Steady_State':
                 node_df = create_node_fdm_constants(
@@ -220,13 +234,8 @@ if __name__ == '__main__':
             loc_temps.update({'fire_temp': np.float64(inputs['FireTemp[C]'] + 273.15)})
             loc_temps.update({'amb_temp': np.float64(inputs['Ambient/InitialTemp[C]'] + 273.15)})
 
-            h_vals = {'tank_exterior': 15, 'tank_interior': 15}
-
-            '''
-            {'T @ ' + i: loc_temps['amb_temp'] for i in str_time_steps}
-            {'Heat Flux @ ' + i: np.float64(0) for i in str_time_steps}
-            {'Heat Gen @ ' + i: np.float64(0) for i in str_time_steps}
-            '''
+            h_vals = {'tank_exterior': inputs['External Wall h Value (W/m²K)'],
+                      'tank_interior': inputs['Internal Wall h Value (W/m²K)']}
 
         #  generate_3d_node_geometry(df)
         export = False
@@ -314,8 +323,8 @@ if __name__ == '__main__':
         if export:
             print('Exporting results...\n')
             try:
-                export_results(dfs=[node_df, slope_df],
-                               df_names=['df', 'slope_df'],
+                export_results(dfs=[node_df],
+                               df_names=['df'],
                                open_after=False,
                                index=True)
 

@@ -19,8 +19,8 @@ VSVersionInfo(
         StringStruct(u'FileVersion', u'0.0.0.9 (win7sp1_rtm.101119-1850) (win7sp1_rtm.101119-1850)'),
         StringStruct(u'InternalName', u'cmd'),
         StringStruct(u'LegalCopyright', u'\xa9  University of Calgary. All rights reserved.'),
-        StringStruct(u'OriginalFilename', u'Testing-BM'),
-        StringStruct(u'ProductName', u'FireRedTank_Testing-BM'),
+        StringStruct(u'OriginalFilename', u'Animation'),
+        StringStruct(u'ProductName', u'FireRedTank_Animation'),
         StringStruct(u'ProductVersion', u'0.0.0.9')])
       ]), 
     VarFileInfo([VarStruct(u'Translation', [1033, 1200])])

@@ -1,8 +1,10 @@
 import os
-import math
 import SetUp as su
 import numpy as np
 import pandas as pd
+import matplotlib.cm as cm
+import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 
 pd.set_option('display.max_rows', 2000)
 pd.set_option('display.max_columns', 2000)
@@ -268,6 +270,38 @@ if __name__ == '__main__':
         not_at_ss = nodes_at_ss != len(df)
 
         t += 1
+
+    node_df = pd.read_csv(os.path.dirname(os.getcwd()) + r'\output_df.csv')
+
+    max_temp = node_df['Temp'].max()
+    min_temp = node_df['Temp'].min()
+    normalize = colors.Normalize(vmin=min_temp, vmax=max_temp)
+
+    fig = plt.figure()
+    ax = plt.gca()
+    ax.set_aspect('equal')
+    heatmap = ax.tricontour(node_df['x'],
+                            node_df['y'],
+                            node_df['Temp'],
+                            cmap=cm.rainbow,
+                            norm=normalize,
+                            alpha=0.9)
+    plt.axis('off')
+    cbaxes = fig.add_axes([0.02, 0.1, 0.03, 0.8])  # This is the position for the colorbar
+    cb = fig.colorbar(heatmap, cax=cbaxes, format='%.1f')
+    for line in cb.lines:
+        line.set_linewidth(35)
+
+    new_axis = fig.add_axes(ax.get_position(),
+                            projection='polar',
+                            frameon=False,
+                            rlabel_position=90)
+
+    new_axis.yaxis.grid(color='k', linewidth=0.75, alpha=1)
+    new_axis.xaxis.grid(False)
+    new_axis.set_xticks([])
+    new_axis.set_rticks([1, 2, 4, 6])
+    new_axis.tick_params(labelleft=False)
 
 
 

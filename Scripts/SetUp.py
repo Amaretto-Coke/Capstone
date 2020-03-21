@@ -304,6 +304,8 @@ def create_cyl_nodes(slices=1,
 
     #  Outer area is zero if the node is not on the outside of the cylinder
     df['otr_area'] = (df['radii'] + df['delta_radii'] / 2) * df['delta_theta'] * df['delta_height'] * (df['radii'] == df['radii'].max())
+    df['inr_area'] = (df['radii'] - df['delta_radii']/2) * df['delta_theta'] * df['delta_height'] * (
+        df['radii'] == df['radii'].max()) * (df['height'] >= liq_level)
     df['volume'] = 4 * df['delta_radii'] * df['radii'] * (df['lft_theta'] - df['rht_theta']) ** 2 ** .5 / 2
 
     df['otr_radii'] = df['radii'] + df['delta_radii']/2
@@ -349,13 +351,13 @@ def create_cyl_nodes(slices=1,
     return df
 
 
-def assign_node_view_factor(df, cyl_view_factor):
+def assign_node_view_factor(df, cyl_view_factor, cyl_emissivity):
     df['node_vf'] = (np.vectorize(math.cos)(df['rht_theta']) -
                      np.vectorize(math.cos)(df['lft_theta']))
     df['node_vf'] = df['node_vf'] * (df['radii'] == df['radii'].max())
     df['node_vf'] = df['node_vf'] * ((df['theta'] > 0) & (df['theta'] < np.pi))
     df['node_vf'] = df['node_vf'].apply(lambda x: abs(x))
-    df['node_vf'] = df['node_vf'] * cyl_view_factor
+    df['node_vf'] = df['node_vf'] * cyl_view_factor * cyl_emissivity
 
     return df
 
@@ -692,4 +694,24 @@ def create_node_fdm_constants(df,
     pd.options.mode.chained_assignment = 'warn'
 
     return df
+
+
+def mix_me(mf_list):
+    """
+    Give input as a list of mass fractions for pentane through decane
+    Lists contain properties for pentane through decane.
+    All values are taken at 20C.
+    """
+    k = [0.1144, 0.1214, 0.1262, 0.1292, 0.1316, 0.1330]  # W/m-K
+    Cp = [2.226, 2.143, 2.101, 2.076, 2.052, 2.037]  # kJ/kg-K
+    rho = [626, 659, 684, 703, 718, 730]  # kg/m3
+
+    k_mix, Cp_mix, rho_mix = 0, 0, 0
+
+    for i, j, k, l in zip(k, Cp, rho, mf_list):
+        k_mix += i * l
+        Cp_mix += j * l
+        rho_mix += k * l
+
+    return k_mix, Cp_mix, rho_mix
 
