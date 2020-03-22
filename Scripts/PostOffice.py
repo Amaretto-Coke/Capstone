@@ -6,10 +6,10 @@ from openpyxl import load_workbook
 
 def import_cases_and_fluids():
     # Creating a path string to the user interface excel file.
-    path = os.path.dirname(os.getcwd()) + r'\MailBox.xlsx'
+    path = os.path.dirname(os.getcwd()) + r'\UI.xlsm'
 
     # Importing the two Excel sheets as two new data frames.
-    inputs = pd.read_excel(path, sheet_name='Inputs')
+    inputs = pd.read_excel(path, sheet_name='Parameters')
 
     # Setting the index to the property column.
     inputs.set_index('Property', drop=True, inplace=True)

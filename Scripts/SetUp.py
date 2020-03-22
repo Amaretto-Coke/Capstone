@@ -344,6 +344,7 @@ def create_cyl_nodes(slices=1,
              'lft_theta',
              'rht_theta',
              'otr_area',
+             'inr_area',
              'volume']]
 
     print('Created {0} nodes.\n'.format(len(df)))
@@ -581,113 +582,113 @@ def create_node_fdm_constants(df,
                 df['k_ave'].loc[sub_df] / df['Cp_ave_rho_ave_product'].loc[sub_df] * \
                 delta_time / 2 / df['delta_radii'].loc[sub_df] / df['radii'].loc[sub_df]
 
-        # Start of calculating the finite difference constants for the wall at liquid nodes
+    # Start of calculating the finite difference constants for the wall at liquid nodes
+    if True:
+        sub_df = (df['node_class'] == 5)
+        # Start of d1 calculations
         if True:
-            sub_df = (df['node_class'] == 5)
-            # Start of d1 calculations
-            if True:
-                df['d1a'].loc[sub_df] = df['k'].loc[sub_df] * delta_time / \
-                                        df['rho'].loc[sub_df] / df['Cp'].loc[sub_df] / fluid_delta_radii ** 2
+            df['d1a'].loc[sub_df] = df['k'].loc[sub_df] * delta_time / \
+                                    df['rho'].loc[sub_df] / df['Cp'].loc[sub_df] / fluid_delta_radii ** 2
 
-                df['ro'].loc[sub_df] = df['radii'].loc[sub_df]
-                df['ro_sqd'].loc[sub_df] = df['ro'].loc[sub_df] * df['ro'].loc[sub_df]
+            df['ro'].loc[sub_df] = df['radii'].loc[sub_df]
+            df['ro_sqd'].loc[sub_df] = df['ro'].loc[sub_df] * df['ro'].loc[sub_df]
 
-                df['rb'].loc[sub_df] = df['inr_radii'].loc[sub_df]
-                df['rb_sqd'].loc[sub_df] = df['rb'].loc[sub_df] * df['rb'].loc[sub_df]
+            df['rb'].loc[sub_df] = df['inr_radii'].loc[sub_df]
+            df['rb_sqd'].loc[sub_df] = df['rb'].loc[sub_df] * df['rb'].loc[sub_df]
 
-                df['ri'].loc[sub_df] = df['inr_radii'].loc[sub_df] - fluid_delta_radii / 2
-                df['ri_sqd'].loc[sub_df] = df['ri'].loc[sub_df] * df['ri'].loc[sub_df]
+            df['ri'].loc[sub_df] = df['inr_radii'].loc[sub_df] - fluid_delta_radii / 2
+            df['ri_sqd'].loc[sub_df] = df['ri'].loc[sub_df] * df['ri'].loc[sub_df]
 
-                df['Cp_ave_rho_ave_product'].loc[sub_df] = (
-                    densities['Wall'] * specific_heats['Wall'] *
-                    (df['ro_sqd'].loc[sub_df] - df['rb_sqd'].loc[sub_df]) +
-                    densities['Liquid'] * specific_heats['Liquid'] *
-                    (df['rb_sqd'].loc[sub_df] - df['ri_sqd'].loc[sub_df])) / \
-                    (df['ro_sqd'].loc[sub_df] - df['ri_sqd'].loc[sub_df])
+            df['Cp_ave_rho_ave_product'].loc[sub_df] = (
+                densities['Wall'] * specific_heats['Wall'] *
+                (df['ro_sqd'].loc[sub_df] - df['rb_sqd'].loc[sub_df]) +
+                densities['Liquid'] * specific_heats['Liquid'] *
+                (df['rb_sqd'].loc[sub_df] - df['ri_sqd'].loc[sub_df])) / \
+                (df['ro_sqd'].loc[sub_df] - df['ri_sqd'].loc[sub_df])
 
-                df['k_ave'].loc[sub_df] = \
-                    np.log(df['ro'].loc[sub_df] / df['ri'].loc[sub_df]) / (
-                            np.log(df['rb'].loc[sub_df] / df['ri'].loc[sub_df]) / thermal_conductivities['Liquid'] +
-                            np.log(df['ro'].loc[sub_df] / df['rb'].loc[sub_df]) / thermal_conductivities['Wall']
-                    )
+            df['k_ave'].loc[sub_df] = \
+                np.log(df['ro'].loc[sub_df] / df['ri'].loc[sub_df]) / (
+                        np.log(df['rb'].loc[sub_df] / df['ri'].loc[sub_df]) / thermal_conductivities['Liquid'] +
+                        np.log(df['ro'].loc[sub_df] / df['rb'].loc[sub_df]) / thermal_conductivities['Wall']
+                )
 
-                df['d1b'].loc[sub_df] = df['k_ave'].loc[sub_df] / df['Cp_ave_rho_ave_product'].loc[sub_df] * \
-                    delta_time / df['delta_radii'].loc[sub_df] / df['delta_radii'].loc[sub_df]
+            df['d1b'].loc[sub_df] = df['k_ave'].loc[sub_df] / df['Cp_ave_rho_ave_product'].loc[sub_df] * \
+                delta_time / df['delta_radii'].loc[sub_df] / df['delta_radii'].loc[sub_df]
 
-            # Start of d2 calculations
-            if True:
-                df['ro'].loc[sub_df] = df['radii'].loc[sub_df] + wall_thickness
-                df['ro_sqd'].loc[sub_df] = df['ro'].loc[sub_df] * df['ro'].loc[sub_df]
-
-                df['Cp_ave_rho_ave_product'].loc[sub_df] = (
-                    densities['Wall'] * specific_heats['Wall'] *
-                    (df['ro_sqd'].loc[sub_df] - df['rb_sqd'].loc[sub_df]) +
-                    densities['Liquid'] * specific_heats['Liquid'] *
-                    (df['rb_sqd'].loc[sub_df] - df['ri_sqd'].loc[sub_df])
-                ) / (df['ro_sqd'].loc[sub_df] - df['ri_sqd'].loc[sub_df])
-
-                df['k_ave'].loc[sub_df] = \
-                    np.log(df['ro'].loc[sub_df] / df['ri'].loc[sub_df]) / \
-                    (np.log(df['rb'].loc[sub_df] / df['ri'].loc[sub_df]) / thermal_conductivities['Liquid'] +
-                     np.log(df['ro'].loc[sub_df] / df['rb'].loc[sub_df]) / thermal_conductivities['Wall'])
-
-                df['d2'].loc[sub_df] = \
-                    df['k_ave'].loc[sub_df] / df['Cp_ave_rho_ave_product'].loc[sub_df] * delta_time / \
-                    df['delta_radii'].loc[sub_df] / df['delta_radii'].loc[sub_df]
-
-        # Start of calculating the finite difference constants for the wall at gas nodes
+        # Start of d2 calculations
         if True:
-            sub_df = (df['node_class'] == 6)
+            df['ro'].loc[sub_df] = df['radii'].loc[sub_df] + wall_thickness
+            df['ro_sqd'].loc[sub_df] = df['ro'].loc[sub_df] * df['ro'].loc[sub_df]
 
-            # Start of d1 calculations
-            if True:
-                df['d1a'].loc[sub_df] = df['k'].loc[sub_df] * delta_time / df['rho'].loc[sub_df] / \
-                                        df['Cp'].loc[sub_df] / fluid_delta_radii ** 2
+            df['Cp_ave_rho_ave_product'].loc[sub_df] = (
+                densities['Wall'] * specific_heats['Wall'] *
+                (df['ro_sqd'].loc[sub_df] - df['rb_sqd'].loc[sub_df]) +
+                densities['Liquid'] * specific_heats['Liquid'] *
+                (df['rb_sqd'].loc[sub_df] - df['ri_sqd'].loc[sub_df])
+            ) / (df['ro_sqd'].loc[sub_df] - df['ri_sqd'].loc[sub_df])
 
-                df['ro'].loc[sub_df] = df['radii'].loc[sub_df]
-                df['ro_sqd'].loc[sub_df] = df['ro'].loc[sub_df] * df['ro'].loc[sub_df]
+            df['k_ave'].loc[sub_df] = \
+                np.log(df['ro'].loc[sub_df] / df['ri'].loc[sub_df]) / \
+                (np.log(df['rb'].loc[sub_df] / df['ri'].loc[sub_df]) / thermal_conductivities['Liquid'] +
+                 np.log(df['ro'].loc[sub_df] / df['rb'].loc[sub_df]) / thermal_conductivities['Wall'])
 
-                df['rb'].loc[sub_df] = df['inr_radii'].loc[sub_df]
-                df['rb_sqd'].loc[sub_df] = df['rb'].loc[sub_df] * df['rb'].loc[sub_df]
+            df['d2'].loc[sub_df] = \
+                df['k_ave'].loc[sub_df] / df['Cp_ave_rho_ave_product'].loc[sub_df] * delta_time / \
+                df['delta_radii'].loc[sub_df] / df['delta_radii'].loc[sub_df]
 
-                df['ri'].loc[sub_df] = df['inr_radii'].loc[sub_df] - fluid_delta_radii / 2
-                df['ri_sqd'].loc[sub_df] = df['ri'].loc[sub_df] * df['ri'].loc[sub_df]
+    # Start of calculating the finite difference constants for the wall at gas nodes
+    if True:
+        sub_df = (df['node_class'] == 6)
 
-                df['Cp_ave_rho_ave_product'].loc[sub_df] = (
-                    densities['Wall'] * specific_heats['Wall'] *
-                    (df['ro_sqd'].loc[sub_df] - df['rb_sqd'].loc[sub_df]) +
-                    densities['Gas'] * specific_heats['Gas'] *
-                    (df['rb_sqd'].loc[sub_df] - df['ri_sqd'].loc[sub_df])
-                ) / (df['ro_sqd'].loc[sub_df] - df['ri_sqd'].loc[sub_df])
+        # Start of d1 calculations
+        if True:
+            df['d1a'].loc[sub_df] = df['k'].loc[sub_df] * delta_time / df['rho'].loc[sub_df] / \
+                                    df['Cp'].loc[sub_df] / fluid_delta_radii ** 2
 
-                df['k_ave'].loc[sub_df] = \
-                    np.log(df['ro'].loc[sub_df] / df['ri'].loc[sub_df]) / \
-                    (np.log(df['rb'].loc[sub_df] / df['ri'].loc[sub_df]) / thermal_conductivities['Gas'] +
-                     np.log(df['ro'].loc[sub_df] / df['rb'].loc[sub_df]) / thermal_conductivities['Wall'])
+            df['ro'].loc[sub_df] = df['radii'].loc[sub_df]
+            df['ro_sqd'].loc[sub_df] = df['ro'].loc[sub_df] * df['ro'].loc[sub_df]
 
-                df['d1b'].loc[sub_df] = df['k_ave'].loc[sub_df] / df['Cp_ave_rho_ave_product'].loc[sub_df] * \
-                    delta_time / df['delta_radii'].loc[sub_df] / df['delta_radii'].loc[sub_df]
+            df['rb'].loc[sub_df] = df['inr_radii'].loc[sub_df]
+            df['rb_sqd'].loc[sub_df] = df['rb'].loc[sub_df] * df['rb'].loc[sub_df]
 
-            # Start of d2 calculations
-            if True:
-                df['ro'].loc[sub_df] = df['radii'].loc[sub_df] + wall_thickness
-                df['ro_sqd'].loc[sub_df] = df['ro'].loc[sub_df] * df['ro'].loc[sub_df]
+            df['ri'].loc[sub_df] = df['inr_radii'].loc[sub_df] - fluid_delta_radii / 2
+            df['ri_sqd'].loc[sub_df] = df['ri'].loc[sub_df] * df['ri'].loc[sub_df]
 
-                df['Cp_ave_rho_ave_product'].loc[sub_df] = (
-                    densities['Wall'] * specific_heats['Wall'] *
-                    (df['ro_sqd'].loc[sub_df] - df['rb_sqd'].loc[sub_df]) +
-                    densities['Gas'] * specific_heats['Gas'] *
-                    (df['rb_sqd'].loc[sub_df] - df['ri_sqd'].loc[sub_df])
-                ) / (df['ro_sqd'].loc[sub_df] - df['ri_sqd'].loc[sub_df])
+            df['Cp_ave_rho_ave_product'].loc[sub_df] = (
+                densities['Wall'] * specific_heats['Wall'] *
+                (df['ro_sqd'].loc[sub_df] - df['rb_sqd'].loc[sub_df]) +
+                densities['Gas'] * specific_heats['Gas'] *
+                (df['rb_sqd'].loc[sub_df] - df['ri_sqd'].loc[sub_df])
+            ) / (df['ro_sqd'].loc[sub_df] - df['ri_sqd'].loc[sub_df])
 
-                df['k_ave'].loc[sub_df] = \
-                    np.log(df['ro'].loc[sub_df] / df['ri'].loc[sub_df]) / (
-                    np.log(df['rb'].loc[sub_df] / df['ri'].loc[sub_df]) / thermal_conductivities['Gas'] +
-                    np.log(df['ro'].loc[sub_df] / df['rb'].loc[sub_df]) / thermal_conductivities['Wall']
-                    )
+            df['k_ave'].loc[sub_df] = \
+                np.log(df['ro'].loc[sub_df] / df['ri'].loc[sub_df]) / \
+                (np.log(df['rb'].loc[sub_df] / df['ri'].loc[sub_df]) / thermal_conductivities['Gas'] +
+                 np.log(df['ro'].loc[sub_df] / df['rb'].loc[sub_df]) / thermal_conductivities['Wall'])
 
-                df['d2'].loc[sub_df] = df['k_ave'].loc[sub_df] / df['Cp_ave_rho_ave_product'].loc[sub_df] * \
-                    delta_time / df['delta_radii'].loc[sub_df] / df['delta_radii'].loc[sub_df]
+            df['d1b'].loc[sub_df] = df['k_ave'].loc[sub_df] / df['Cp_ave_rho_ave_product'].loc[sub_df] * \
+                delta_time / df['delta_radii'].loc[sub_df] / df['delta_radii'].loc[sub_df]
+
+        # Start of d2 calculations
+        if True:
+            df['ro'].loc[sub_df] = df['radii'].loc[sub_df] + wall_thickness
+            df['ro_sqd'].loc[sub_df] = df['ro'].loc[sub_df] * df['ro'].loc[sub_df]
+
+            df['Cp_ave_rho_ave_product'].loc[sub_df] = (
+                densities['Wall'] * specific_heats['Wall'] *
+                (df['ro_sqd'].loc[sub_df] - df['rb_sqd'].loc[sub_df]) +
+                densities['Gas'] * specific_heats['Gas'] *
+                (df['rb_sqd'].loc[sub_df] - df['ri_sqd'].loc[sub_df])
+            ) / (df['ro_sqd'].loc[sub_df] - df['ri_sqd'].loc[sub_df])
+
+            df['k_ave'].loc[sub_df] = \
+                np.log(df['ro'].loc[sub_df] / df['ri'].loc[sub_df]) / (
+                np.log(df['rb'].loc[sub_df] / df['ri'].loc[sub_df]) / thermal_conductivities['Gas'] +
+                np.log(df['ro'].loc[sub_df] / df['rb'].loc[sub_df]) / thermal_conductivities['Wall']
+                )
+
+            df['d2'].loc[sub_df] = df['k_ave'].loc[sub_df] / df['Cp_ave_rho_ave_product'].loc[sub_df] * \
+                delta_time / df['delta_radii'].loc[sub_df] / df['delta_radii'].loc[sub_df]
 
         df['d3'] = df['k'] * delta_time / df['radii'] / df['radii'] / df['delta_theta'] / df['delta_theta']
 
@@ -699,19 +700,46 @@ def create_node_fdm_constants(df,
 def mix_me(mf_list):
     """
     Give input as a list of mass fractions for pentane through decane
-    Lists contain properties for pentane through decane.
-    All values are taken at 20C.
+    Lists contain properties for propane through heptane.
+    Properties taken at 20 degC and 1 bar.
+        For the substances that are gaseous at those conditions,
+        properties are instead taken at bubble point and 1 bar.
+    For the properties that are
     """
-    k = [0.1144, 0.1214, 0.1262, 0.1292, 0.1316, 0.1330]  # W/m-K
-    Cp = [2.226, 2.143, 2.101, 2.076, 2.052, 2.037]  # kJ/kg-K
-    rho = [626, 659, 684, 703, 718, 730]  # kg/m3
+
+    '''
+    Fluid	rho kg/m3	Cp kJ/kgK	k W/mK
+    C3	581.20	2.2450	0.1294
+    IC4	594.08  2.1874  0.1155
+    NC4	601.60	2.3080	0.1157
+    IC5	621.51	2.2605	0.1180
+    NC5	626.00	2.2260	0.1144
+    C6	659.00	2.1430	0.1214
+    C7+	684.00	2.1010	0.1262
+    '''
+
+    rhos = {'C3': 581.20, 'IC4': 594.08, 'NC4': 601.60, 'IC5': 621.51, 'NC5': 626.00, 'C6': 659.00, 'C7+': 684.00}
+    # kg/m3
+
+    Cps = {'C3': 2.2450, 'IC4': 2.1874, 'NC4': 2.3080, 'IC5': 2.2605, 'NC5': 2.2260, 'C6': 2.1430, 'C7+': 2.1010}
+    # kJ/kg-K
+
+    ks = {'C3': 0.1294, 'IC4': 0.1155, 'NC4': 0.1157, 'IC5': 0.1180, 'NC5': 0.1144, 'C6': 0.1214, 'C7+': 0.1262}
+    # W/m-K
 
     k_mix, Cp_mix, rho_mix = 0, 0, 0
 
-    for i, j, k, l in zip(k, Cp, rho, mf_list):
-        k_mix += i * l
-        Cp_mix += j * l
-        rho_mix += k * l
+    for substance in mf_list.keys():
+        k_mix += mf_list[substance] * ks[substance]
+        Cp_mix += mf_list[substance] * Cps[substance]
+        rho_mix += mf_list[substance] * rhos[substance]
 
     return k_mix, Cp_mix, rho_mix
+
+
+
+
+
+
+
 

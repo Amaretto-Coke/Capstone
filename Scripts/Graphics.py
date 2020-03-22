@@ -73,7 +73,7 @@ def generate_3d_node_geometry(prop_df):
     p = ax.scatter(prop_df.x.to_list(),
                    prop_df.y.to_list(),
                    prop_df.z.to_list(),
-                   c=prop_df['Temp'].to_list(),
+                   c=prop_df['c'].to_list(),
                    cmap='viridis',
                    s=5)
     fig.colorbar(p)

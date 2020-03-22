@@ -157,22 +157,23 @@ if __name__ == '__main__':
 
             inputs = import_cases_and_fluids()
 
-            print(inputs)
+            mf_list = {
+                k: inputs[k] for k in inputs.keys() &
+                {'C3', 'IC4', 'NC4', 'IC5', 'NC5', 'C6', 'C7+'}
+            }
 
-            quit()
+            liq_k, liq_Cp, liq_rho = mix_me(mf_list)
 
-            liq_properties = mix_me()
-
-            comp_Cps = {'Liquid': inputs['Liquid_Cp[J/kgK]'],
-                        'Gas': inputs['Air_Cp[J/kgK]'],
+            comp_Cps = {'Liquid': liq_Cp,
+                        'Gas': 1.169627,
                         'Wall': inputs['Wall_Cp[J/kgK]']}
 
-            comp_ks = {'Liquid': inputs['Liquid_k[W/mK]'],
-                       'Gas': inputs['Air_k[W/mK]'],
+            comp_ks = {'Liquid': liq_k,
+                       'Gas': 0.0543496649,
                        'Wall': inputs['Wall_k[W/mK]']}
 
-            comp_rhos = {'Liquid': inputs['Liquid_rho[kg/m3]'],
-                         'Gas': inputs['Air_rho[kg/m3]'],
+            comp_rhos = {'Liquid': liq_rho,
+                         'Gas': 0.1,
                          'Wall': inputs['Wall_rho[kg/m3]']}
 
             print('Importing and pre-processing...\n')
@@ -187,22 +188,29 @@ if __name__ == '__main__':
 
             print('Creating cylinder...\n')
 
-            node_df = create_cyl_nodes(rings=inputs['rings'],
-                                       slices=inputs['slices'],
-                                       gas_layers=inputs['gas_layers'],
-                                       liq_layers=inputs['liq_layers'],
+            if inputs['FluidLevel[m]'] >= inputs['TankHeight[m]']:
+                gas_layers = 0
+            else:
+                gas_layers = 1
+
+            node_df = create_cyl_nodes(rings=inputs['Rings'],
+                                       slices=inputs['Slices'],
+                                       gas_layers=gas_layers,
+                                       liq_layers=1,
                                        cyl_diam=tank_od,
                                        cyl_height=inputs['TankHeight[m]'],
                                        liq_level=inputs['FluidLevel[m]'],
                                        base_center=[0, 0, 0],
                                        vol_factor=inputs['vol_factor'],
-                                       wall_thickness=inputs['WallThickness[cm]'] / 100)
+                                       wall_thickness=inputs['WallThickness[cm]'] / 100,
+                                       remove_gas_nodes=True)
 
-            node_df['c'] = node_df['comp'].apply(lambda cpnt: color_nodes_by_component(cpnt))
-
-            if inputs['show_geo']:
-                print('Building node visual...\n')
+            '''
+            if True:
+                print('Building node visual...')
+                node_df['c'] = node_df['comp'].apply(lambda cpnt: color_nodes_by_component(cpnt))
                 generate_3d_node_geometry(prop_df=node_df)
+            '''
 
             node_df = assign_node_view_factor(
                 df=node_df,
@@ -234,8 +242,8 @@ if __name__ == '__main__':
             loc_temps.update({'fire_temp': np.float64(inputs['FireTemp[C]'] + 273.15)})
             loc_temps.update({'amb_temp': np.float64(inputs['Ambient/InitialTemp[C]'] + 273.15)})
 
-            h_vals = {'tank_exterior': inputs['External Wall h Value (W/m²K)'],
-                      'tank_interior': inputs['Internal Wall h Value (W/m²K)']}
+            h_vals = {'tank_exterior': inputs['External_Tank_h_value[W/m²K]'],
+                      'tank_interior': inputs['Internal_Tank_h_value[W/m²K]']}
 
         #  generate_3d_node_geometry(df)
         export = False
@@ -287,8 +295,6 @@ if __name__ == '__main__':
             node_df = node_df.assign(**{'T @ ' + str_time_steps[0]: loc_temps['amb_temp']})
 
             total_time_steps = int(len(time_steps)) - 1
-            meter_time = False
-            startTime = datetime.now()
 
             for t in time_steps[:-1]:
                 print('\rCurrently on timestep {0} of {1}.'.format(
@@ -304,29 +310,16 @@ if __name__ == '__main__':
                     str_times=str_time_steps
                 )
 
-            iteration_seconds = (datetime.now() - startTime).total_seconds()
-
-            if meter_time:
-                num_nodes = len(node_df)
-
-                print('Iterated', num_nodes, 'nodes,', total_time_steps, 'times in', iteration_seconds, 'seconds.')
-
-                output = 'New ' + str(num_nodes) + ' ' + str(total_time_steps) + ' ' + str(iteration_seconds) + '\n'
-                path = os.path.dirname(os.getcwd()) + '\Output\SpeedOut.txt'
-                with open(path, 'a') as file:
-                    file.write(output)
-                    file.close()
-
         print('\nFinished iterations.\n')
-        generate_3d_node_geometry(node_df)
 
         if export:
             print('Exporting results...\n')
             try:
-                export_results(dfs=[node_df],
-                               df_names=['df'],
-                               open_after=False,
-                               index=True)
+                if str(inputs['Case_name']) != 'nan':
+                    export_results(dfs=[node_df],
+                                   df_names=[inputs['Case_name']],
+                                   open_after=False,
+                                   index=True)
 
             except PermissionError:
                 print('File is locked for editing by user.\n\tNode network could not be exported.')
