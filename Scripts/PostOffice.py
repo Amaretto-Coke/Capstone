@@ -1,8 +1,8 @@
 import pandas as pd
 import os
 from string import ascii_letters
+import openpyxl
 from openpyxl import load_workbook
-
 
 def import_cases_and_fluids():
     # Creating a path string to the user interface excel file.
@@ -22,11 +22,19 @@ def import_cases_and_fluids():
 
 
 def export_results(dfs=None, df_names=None, open_after=False, index=False):
+    path = os.path.dirname(os.getcwd()) + r'\Results.xlsx'
+    
     if dfs is None:
         print('No date frames to export.')
     else:
         # Creating a path string to the user interface excel file
-        path = os.path.dirname(os.getcwd()) + r'\MailBox.xlsx'
+        if os.path.exists(path):
+            pass
+        else:
+            wb = openpyxl.Workbook()
+            wb.save(path)
+            wb.close()
+            
         for i in range(0, len(dfs)):
             sheet_name = validate_excel_sheet_name(df_names[i])
             writer = append_df_to_excel(filename=path,
@@ -44,7 +52,9 @@ def append_df_to_excel(filename, df,
                        start_row=None,
                        truncate_sheet=True,
                        **to_excel_kwargs):
+
     # Taken from https://stackoverflow.com/questions/38074678/append-existing-excel-sheet-with-new-dataframe-using-python-pandas
+
     """
     Append a DataFrame [df] to existing Excel file [filename]
     into [sheet_name] Sheet.

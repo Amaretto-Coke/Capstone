@@ -1,4 +1,4 @@
-from Scripts.ExeFactory import *
+from ExeFactory import *
 from pathlib import Path
 
 description = 'Testing Build of FireRedTank'

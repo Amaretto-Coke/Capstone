@@ -306,7 +306,7 @@ def create_cyl_nodes(slices=1,
     df['otr_area'] = (df['radii'] + df['delta_radii'] / 2) * df['delta_theta'] * df['delta_height'] * (df['radii'] == df['radii'].max())
     df['inr_area'] = (df['radii'] - df['delta_radii']/2) * df['delta_theta'] * df['delta_height'] * (
         df['radii'] == df['radii'].max()) * (df['height'] >= liq_level)
-    df['volume'] = 4 * df['delta_radii'] * df['radii'] * (df['lft_theta'] - df['rht_theta']) ** 2 ** .5 / 2
+    df['volume'] = 4 * df['delta_radii'] * df['radii'] * ((df['lft_theta'] - df['rht_theta']) ** 2 ** .5) / 2 * df['delta_height']
 
     df['otr_radii'] = df['radii'] + df['delta_radii']/2
     df['inr_radii'] = df['radii'] - df['delta_radii']/2

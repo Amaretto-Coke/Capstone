@@ -1,5 +1,7 @@
+import os
 import sys
 import traceback
+import xlsxwriter
 from SetUp import *
 from Graphics import *
 from PostOffice import *
@@ -153,26 +155,26 @@ if __name__ == '__main__':
         if True:
             pd.set_option('display.max_rows', 2000)
             pd.set_option('display.max_columns', 2000)
-            # pd.set_option('display.width', 2000)
+            pd.set_option('display.width', 2000)
 
             inputs = import_cases_and_fluids()
 
             mf_list = {
                 k: inputs[k] for k in inputs.keys() &
-                {'C3', 'IC4', 'NC4', 'IC5', 'NC5', 'C6', 'C7+'}
+                                      {'C3', 'IC4', 'NC4', 'IC5', 'NC5', 'C6', 'C7+'}
             }
 
             liq_k, liq_Cp, liq_rho = mix_me(mf_list)
 
-            comp_Cps = {'Liquid': liq_Cp,
+            comp_Cps = {'Liquid': inputs['Liquid_Cp[J/kgK]'],
                         'Gas': 1.169627,
                         'Wall': inputs['Wall_Cp[J/kgK]']}
 
-            comp_ks = {'Liquid': liq_k,
+            comp_ks = {'Liquid': inputs['Liquid_k[W/mK]'],
                        'Gas': 0.0543496649,
                        'Wall': inputs['Wall_k[W/mK]']}
 
-            comp_rhos = {'Liquid': liq_rho,
+            comp_rhos = {'Liquid': inputs['Liquid_rho[kg/m3]'],
                          'Gas': 0.1,
                          'Wall': inputs['Wall_rho[kg/m3]']}
 
@@ -285,11 +287,15 @@ if __name__ == '__main__':
 
             print('\n', not_at_ss, 'at', t, 'iterations.')
 
+
         elif inputs['Mode'] == 'Fixed_Time':
+
             print('Starting fixed time iterations...')
 
             time_steps = list(range(0, inputs['TimeIterations[#]'] + 1))  #
+
             str_time_steps = ["t={:0.2f}s".format(
+
                 i * inputs['TimeStep[s]']) for i in time_steps]
 
             node_df = node_df.assign(**{'T @ ' + str_time_steps[0]: loc_temps['amb_temp']})
@@ -297,14 +303,35 @@ if __name__ == '__main__':
             total_time_steps = int(len(time_steps)) - 1
 
             for t in time_steps[:-1]:
-                print('\rCurrently on timestep {0} of {1}.'.format(
-                    int(t) + 1, total_time_steps),
-                      end='', flush=True)
+                radiation = node_df.copy(deep=True)
+
+                conv = node_df.copy(deep=True)
+
+                radiation.drop(radiation[radiation.theta > np.pi / 2].index, inplace=True)
+
+                conv.drop(conv[conv.theta < np.pi / 2].index, inplace=True)
+
+                netheat = round(sum(node_df.iloc[:, -3].to_numpy()), 4)
+
+                netrad = round(sum(radiation.iloc[:, -3].to_numpy()), 4)
+
+                netconv = round(sum(conv.iloc[:, -3].to_numpy()), 4)
+
+                print('\rTotal Heat Flux (Radiation + Convection) at time {0}s of {1}s is {2}+{3}={4} W/m2.'.format(
+
+                    int(t) + 1, total_time_steps, netrad, netconv, netheat),
+
+                    end='', flush=True)
+
+                # print('\rCurrently on timestep {0} of {1}.'.format(
+                #     int(t) + 1, total_time_steps),
+                #       end='', flush=True)
+
                 node_df = update_node_temp_ft(
                     func_df=node_df,
                     delta_time=inputs['TimeStep[s]'],
                     tick=t,
-                    tock=t+1,
+                    tock=t + 1,
                     h_values=h_vals,
                     local_temps=loc_temps,
                     str_times=str_time_steps
@@ -323,6 +350,9 @@ if __name__ == '__main__':
 
             except PermissionError:
                 print('File is locked for editing by user.\n\tNode network could not be exported.')
+
+        path = os.getcwd() + r'\node_df_' + inputs['Case_name'] + r'.pkl'
+        node_df.to_pickle(path)
 
     except BaseException:
         print(sys.exc_info()[0])

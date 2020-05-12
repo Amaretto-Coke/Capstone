@@ -149,9 +149,6 @@ def generate_ss_ring_graph(temp_df, prop_df):
 
     plt.show()
 
-
-
-
 def generate_time_gif(temp_df, prop_df, time_steps):
     copy_df = temp_df.copy(deep=True)
     copy_df.reset_index(inplace=True)
@@ -295,11 +292,110 @@ def outer_node_graph(node_df, time_steps, stop, str_time_steps):
 
     plt.show()
 
+def createheatmap(node_df,casename,finaltime,mode):
+    if mode == 'Fixed_Time':
+        endtime = node_df[finaltime]
+    else:
+        endtime = node_df['Temp']
+        
+    max_temp = endtime.max()
+    min_temp = endtime.min()
+    normalize = colors.Normalize(vmin=min_temp, vmax=max_temp)
+    
+    fig = plt.figure()
+    ax = plt.gca()
+    ax.set_aspect('equal')
+    heatmap = ax.tricontourf(node_df['x'],
+                    node_df['y'],
+                    endtime,
+                    cmap=cm.Wistia,
+                    norm=normalize,
+                    alpha = 0.9)
+    plt.axis('off')
+    cbaxes = fig.add_axes([0.05, 0.1, 0.03, 0.8])  # This is the position for the colorbar
+    cb = fig.colorbar(heatmap, cax = cbaxes, format = '%.1f')
+    cb.ax.set_ylabel('Temperature (K)',labelpad = -65)
+    
+    new_axis = fig.add_axes(ax.get_position(),
+                            projection='polar',
+                            frameon=False,
+                            rlabel_position=180)
+    
+    new_axis.set_theta_zero_location("E")
+    new_axis.yaxis.grid(color='r', linewidth=0.75, alpha=0.2)
+    new_axis.xaxis.grid(color='r', linewidth=0.75, alpha=0.2)
+    radii_ticks = np.round(np.unique(node_df['radii'].values), 1)
+    new_axis.set_rticks(radii_ticks)
+    
+    path = os.path.dirname(os.getcwd()) + r'\heat_map_' + casename + '.png'
+    plt.savefig(path)
+    plt.close()
 
-# make_cylinder_graphic(df,str_time_steps,inputs)
-# outer_node_graph(df, time_steps, 5, str_time_steps)
+def outernodegraph(node_df,time_steps,str_time_steps,casename):
+    times = ['T @ ' + i for i in str_time_steps]
+    time_steps_skipped = (np.linspace(1,time_steps[-1],10)).astype('int')
+    times_skipped = [times[i] for i in time_steps_skipped]
+            
+    temperature_df  = node_df[['radii','theta']]
+    
+    for n,i in enumerate(times_skipped):
+        temperature_df  = pd.concat([temperature_df,node_df[i]], axis=1)
+        
+    outsidetemp = temperature_df[temperature_df.radii == temperature_df.radii.max()]
+    temperature = outsidetemp.iloc[:,2:]
+    
+    ## setup the normalization and the colormap
+    time_steps_norm = [i/time_steps_skipped[-1] for i in time_steps_skipped]
+    colormap = cm.viridis
+    fig, ax = plt.subplots()
+    
+    for i,k in enumerate(temperature):
+        plt.plot(outsidetemp.theta*(180/np.pi),temperature[k],color=colormap(time_steps_norm[i]))
+        
+    ## setup the colorbar and the figure
+    scalarmappaple = cm.ScalarMappable(cmap=colormap)
+    scalarmappaple.set_array(time_steps_norm)
+    cb = plt.colorbar(scalarmappaple,ticks=time_steps_norm)
+    cb.set_label('Normalized Time (% of simulation completed)',rotation=270,labelpad = 15)
+    plt.xticks([0,90,180,270,360])
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+    plt.xlabel("Theta (Degrees)")
+    plt.ylabel("Temperature (K)")
+    plt.title('Wall Temperature vs Theta for Different Time Steps')
+        
+    path = os.path.dirname(os.getcwd()) + r'\wall_temp_' + casename + '.png'
+    plt.savefig(path)
+    plt.close()
+    return
 
-
-
+    
+def innernodegraph(node_df,time_steps,str_time_steps,casename):
+    times = ['T @ ' + i for i in str_time_steps]
+    time_steps_skipped = (np.linspace(1,time_steps[-1],10)).astype('int')
+    times_skipped = [times[i] for i in time_steps_skipped]
+            
+    insidetemp = node_df[node_df.radii < node_df.radii.max()]
+    avet = []
+    mint = []
+    maxt = []
+    
+    for n,i in enumerate(times_skipped):
+        avet.append(insidetemp[i].mean())
+        mint.append(insidetemp[i].min())
+        maxt.append(insidetemp[i].max())
+        
+    fig, ax = plt.subplots()
+    plt.plot(time_steps_skipped,avet,label = 'Average Fluid Temperature')
+    plt.plot(time_steps_skipped,mint,label = 'Minimum Fluid Temperature')
+    plt.plot(time_steps_skipped,maxt,label = 'Maximum Fluid Temperature')
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+    plt.xlabel("Time (hr)")
+    plt.ylabel("Temperature (K)")
+    plt.title('Fluid Temperature vs Time')
+    plt.legend()
+    
+    path = os.path.dirname(os.getcwd()) + r'\liquid_temp_' + casename + '.png'
+    plt.savefig(path)
+    plt.close()
 
 
