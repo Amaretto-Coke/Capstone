@@ -1,5 +1,6 @@
 import os
 import sys
+import warnings
 import traceback
 import xlsxwriter
 from SetUp import *
@@ -78,7 +79,8 @@ def preprocess_node_temp_ss(func_df, h_values):
     func_df['B'] = func_df['d1a'].to_numpy() + \
                    func_df['d1b'].to_numpy() + \
                    2 * func_df['d3'].to_numpy() + \
-                   h_values['tank_exterior'] * func_df['otr_area'].to_numpy() / func_df['volume'].to_numpy()
+                   h_values['tank_exterior'] * func_df['otr_area'].to_numpy() / func_df['volume'].to_numpy() + \
+                   h_values['tank_interior'] * func_df['inr_area'].to_numpy() / func_df['volume'].to_numpy()
 
     return func_df
 
@@ -86,9 +88,12 @@ def preprocess_node_temp_ss(func_df, h_values):
 def update_node_temp_ss(func_df, h_values, local_temps):
 
     def root4improved(a, b, c):
-        A = (3**0.5*(256*a**3*c**3+27*a**2*b**4)**0.5+9*a*b**2)**(1/3)
-        B = (A/(2**(1/3)*3**(2/3)*a)-(4*(2/3)**(1/3)*c)/A)**0.5
-        C = 1/2*((2*b)/(a*B)-A/(2**(1/3)*3**(2/3)*a)+(4*(2/3)**(1/3)*c)/A)**0.5-1/2*B
+
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            A = (3**0.5*(256*a**3*c**3+27*a**2*b**4)**0.5+9*a*b**2)**(1/3)
+            B = (A/(2**(1/3)*3**(2/3)*a)-(4*(2/3)**(1/3)*c)/A)**0.5
+            C = 1/2*((2*b)/(a*B)-A/(2**(1/3)*3**(2/3)*a)+(4*(2/3)**(1/3)*c)/A)**0.5-1/2*B
         return np.where(a != 0, np.real(C), np.real(c/b))
 
     T_otr1 = func_df.loc[func_df['otr_nbr_1'], 'Temp'].to_numpy()
@@ -115,8 +120,6 @@ def update_node_temp_ss(func_df, h_values, local_temps):
                        ).round(5)
 
     return temp
-
-
 
 # Old Steady State Function
 '''
@@ -149,32 +152,31 @@ def update_node_temp_ss(func_df, h_values, local_temps):
     return func_df
     '''
 
-
 if __name__ == '__main__':
     try:
         if True:
             pd.set_option('display.max_rows', 2000)
             pd.set_option('display.max_columns', 2000)
-            pd.set_option('display.width', 2000)
+            # pd.set_option('display.width', 2000)
 
             inputs = import_cases_and_fluids()
 
             mf_list = {
                 k: inputs[k] for k in inputs.keys() &
-                                      {'C3', 'IC4', 'NC4', 'IC5', 'NC5', 'C6', 'C7+'}
+                {'C3', 'IC4', 'NC4', 'IC5', 'NC5', 'C6', 'C7+'}
             }
 
             liq_k, liq_Cp, liq_rho = mix_me(mf_list)
 
-            comp_Cps = {'Liquid': inputs['Liquid_Cp[J/kgK]'],
+            comp_Cps = {'Liquid': liq_Cp,
                         'Gas': 1.169627,
                         'Wall': inputs['Wall_Cp[J/kgK]']}
 
-            comp_ks = {'Liquid': inputs['Liquid_k[W/mK]'],
+            comp_ks = {'Liquid': liq_k,
                        'Gas': 0.0543496649,
                        'Wall': inputs['Wall_k[W/mK]']}
 
-            comp_rhos = {'Liquid': inputs['Liquid_rho[kg/m3]'],
+            comp_rhos = {'Liquid': liq_rho,
                          'Gas': 0.1,
                          'Wall': inputs['Wall_rho[kg/m3]']}
 
@@ -287,15 +289,11 @@ if __name__ == '__main__':
 
             print('\n', not_at_ss, 'at', t, 'iterations.')
 
-
         elif inputs['Mode'] == 'Fixed_Time':
-
             print('Starting fixed time iterations...')
 
             time_steps = list(range(0, inputs['TimeIterations[#]'] + 1))  #
-
             str_time_steps = ["t={:0.2f}s".format(
-
                 i * inputs['TimeStep[s]']) for i in time_steps]
 
             node_df = node_df.assign(**{'T @ ' + str_time_steps[0]: loc_temps['amb_temp']})
@@ -304,41 +302,32 @@ if __name__ == '__main__':
 
             for t in time_steps[:-1]:
                 radiation = node_df.copy(deep=True)
-
                 conv = node_df.copy(deep=True)
-
-                radiation.drop(radiation[radiation.theta > np.pi / 2].index, inplace=True)
-
-                conv.drop(conv[conv.theta < np.pi / 2].index, inplace=True)
-
-                netheat = round(sum(node_df.iloc[:, -3].to_numpy()), 4)
-
-                netrad = round(sum(radiation.iloc[:, -3].to_numpy()), 4)
-
-                netconv = round(sum(conv.iloc[:, -3].to_numpy()), 4)
-
+                radiation.drop(radiation[radiation.theta > np.pi/2].index, inplace=True)
+                conv.drop(conv[conv.theta < np.pi/2].index, inplace=True)
+                netheat = round(sum(node_df.iloc[:,-3].to_numpy()),4)
+                netrad = round(sum(radiation.iloc[:,-3].to_numpy()),4)
+                netconv = round(sum(conv.iloc[:,-3].to_numpy()),4)
+                
                 print('\rTotal Heat Flux (Radiation + Convection) at time {0}s of {1}s is {2}+{3}={4} W/m2.'.format(
-
-                    int(t) + 1, total_time_steps, netrad, netconv, netheat),
-
-                    end='', flush=True)
-
+                int(t) + 1, total_time_steps,netrad,netconv,netheat),
+                  end='', flush=True)
+                
                 # print('\rCurrently on timestep {0} of {1}.'.format(
                 #     int(t) + 1, total_time_steps),
                 #       end='', flush=True)
-
                 node_df = update_node_temp_ft(
                     func_df=node_df,
                     delta_time=inputs['TimeStep[s]'],
                     tick=t,
-                    tock=t + 1,
+                    tock=t+1,
                     h_values=h_vals,
                     local_temps=loc_temps,
                     str_times=str_time_steps
                 )
 
-        print('\nFinished iterations.\n')
-
+        print('\nFinished iterations.\n')   
+       
         if export:
             print('Exporting results...\n')
             try:
@@ -350,10 +339,10 @@ if __name__ == '__main__':
 
             except PermissionError:
                 print('File is locked for editing by user.\n\tNode network could not be exported.')
-
+    
         path = os.getcwd() + r'\node_df_' + inputs['Case_name'] + r'.pkl'
         node_df.to_pickle(path)
-
+    
     except BaseException:
         print(sys.exc_info()[0])
         print(traceback.format_exc())

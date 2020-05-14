@@ -52,9 +52,7 @@ def append_df_to_excel(filename, df,
                        start_row=None,
                        truncate_sheet=True,
                        **to_excel_kwargs):
-
     # Taken from https://stackoverflow.com/questions/38074678/append-existing-excel-sheet-with-new-dataframe-using-python-pandas
-
     """
     Append a DataFrame [df] to existing Excel file [filename]
     into [sheet_name] Sheet.
